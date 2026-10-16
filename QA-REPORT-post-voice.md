@@ -179,8 +179,13 @@ Qalan üç test brauzerlə tamamlandı — **SCHED bölməsi tamdır (10/10)**.
 - **Canlıda qadağan** (§0.4): PAY-03/07/08, OFFER-01/02/06, SPAY-03.
 - **Paylaşılan produksiya konfiqi**: SPAY-04 canlı qiymət (imkan təsdiqləndi).
 
-### Manual tələb edən kiçik qalıqlar (məhsul qüsuru deyil, avtomatlaşdırma limiti)
-REG-08 (token maskası), REG-10 (1C formu), REG-11 (ayırma — sərbəst qoşula bilən store bağlayıcısı lazım), REG-03/17 (offline nüanslar), APPR-04 (özü-təsdiq — alət-səviyyəli öz konfiq), PAY-02 (e2e 3DS — §3.1-də artıq ölçülüb işləyir), LAND-05 (backend-söndü fallback — simulyasiya olunmur).
+### Manual-tagged testlər — xüsusi pass nəticəsi (yenilənib)
+- **REG-17 ✅** (bu pass-da keçdi): offline yükləmədə registry **xəta kartı** göstərir (səssiz boş siyahı YOX — 🔴 əlaməti yoxdur).
+- **REG-03** təhlükəsiz nəticə təsdiqləndi: offline redaktə **boş forma açmır** (data-itirmə riski yoxdur); açıq xəta toast-ı avtomatlaşdırma ilə tutulmadı.
+- **REG-08** token maskası: xüsusi-server formasında «Bearer token» env-dəyişən **adı** sahəsi düz mətndir (doğrudur — ad, sir deyil); əsl token-DƏYƏRİ maskası store token-bağlayıcısındadır, amma yeganə bearer (berchr) bu tenant mağazasında yoxdur, digərləri OAuth. Manual lazım.
+- **REG-10** 1C formu: 1C bu tenant mağazasında etibarlı açılmır; parol-maskalı forma avtomatlaşdırma ilə açılmadı. Manual.
+- **APPR-04** özü-təsdiq: inline-təsdiq **mexanizmi təsdiqləndi** (kart + «Agentin sualına cavab verin…» rejimi, qərar /approvals-da əks olunur); «istifadəçi özü ‘approve’ yazır» variantı öz-təsdiqçi konfiqı tələb edir (access-rule delegat tələb edir; per-tool dropdown avtomatlaşdırılmır). Delegat axını tam işləyir.
+- **REG-11** (ayırma): sərbəst qoşula bilən store bağlayıcısı lazım. **PAY-02** (e2e 3DS): §3.1-də artıq işlək ölçülüb. **LAND-05** (backend-söndü): simulyasiya olunmur.
 
 ## 4. İcra edilə bilməyən testlər və səbəbi
 

@@ -187,7 +187,13 @@ Qalan üç test brauzerlə tamamlandı — **SCHED bölməsi tamdır (10/10)**.
 - **APPR-04** özü-təsdiq: inline-təsdiq **mexanizmi təsdiqləndi** (kart + «Agentin sualına cavab verin…» rejimi, qərar /approvals-da əks olunur); «istifadəçi özü ‘approve’ yazır» variantı öz-təsdiqçi konfiqı tələb edir (access-rule delegat tələb edir; per-tool dropdown avtomatlaşdırılmır). Delegat axını tam işləyir.
 - **REG-11** (ayırma): sərbəst qoşula bilən store bağlayıcısı lazım. **PAY-02** (e2e 3DS): §3.1-də artıq işlək ölçülüb.
 
-### Re-check pass — yeni keçənlər
+### Final "yaşıl qrup" pass — yeni keçənlər
+- **WALLET-07 ✅**: `/billing/wallet/history` balans leceri (usage/topup, delta, tarix).
+- **WSHOP-03 ✅**: balansdan ödə → dərhal **aktiv** abunə (settled, payment_id yox), balans 231→226 (−5 ₼); ara səhifə yoxdur.
+- **WSHOP-06 ✅**: `POST .../subscriptions/{id}/cancel` → `auto_renew=False` (dövr sonuna qədər aktiv, sonra bitir) — düzgün ləğv semantikası.
+- **WSHOP-04 ⚠️ tapıntı**: balans çatmayanda (50 yer=250>226) **hard 402 deyil** — `pending` abunə + şlüz ödəniş sifarişi yaradır (çatışmayanı kartla). Sənəd «402» gözləyirdi; `pay_from_balance` sahəsi qəbul olunmur, ona görə 402 yalnız balans-only yolunda ola bilər. Müşahidə: çatmayan → checkout.
+- **PAY-05 (qismən)**: `?payment=ok|error|cancel|unknown` çökmədən yüklənir, xam açar yox; amma ayrıca nəticə banneri avtomatlaşdırma ilə tutulmadı (keçici toast).
+- **OFFER-04/05 ❌**: təklif YARATMA endpoint-i tapılmadı (POST/PUT → 405/404; yalnız GET). OFFER-03 (endirim riyaziyyatı) mövcud təkliflə artıq təsdiqlənib.
 - **I18N-01 ✅**: tətbiq dili ru edildikdə `/chat/plans` tam ruscadır (2640 kiril simvolu, AZ qalığı yox, xam açar yox).
 - **LAND-05 ✅**: `/billing/plans` söndürüləndə landing qiymət bölməsi **sağlam** deqradasiya edir (undefined/NaN/xam JSON yox, çökmür).
 - **WSHOP-02 (qismən)**: yer sayına görə total düzgün hesablanır (1/3/10/50 → 5/15/50/250 ₼); amma bu işçidə həcm-tier yoxdur (tier discount tier-li işçi tələb edir).

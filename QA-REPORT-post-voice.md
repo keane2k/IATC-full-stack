@@ -185,7 +185,13 @@ Qalan üç test brauzerlə tamamlandı — **SCHED bölməsi tamdır (10/10)**.
 - **REG-08** token maskası: xüsusi-server formasında «Bearer token» env-dəyişən **adı** sahəsi düz mətndir (doğrudur — ad, sir deyil); əsl token-DƏYƏRİ maskası store token-bağlayıcısındadır, amma yeganə bearer (berchr) bu tenant mağazasında yoxdur, digərləri OAuth. Manual lazım.
 - **REG-10** 1C formu: 1C bu tenant mağazasında etibarlı açılmır; parol-maskalı forma avtomatlaşdırma ilə açılmadı. Manual.
 - **APPR-04** özü-təsdiq: inline-təsdiq **mexanizmi təsdiqləndi** (kart + «Agentin sualına cavab verin…» rejimi, qərar /approvals-da əks olunur); «istifadəçi özü ‘approve’ yazır» variantı öz-təsdiqçi konfiqı tələb edir (access-rule delegat tələb edir; per-tool dropdown avtomatlaşdırılmır). Delegat axını tam işləyir.
-- **REG-11** (ayırma): sərbəst qoşula bilən store bağlayıcısı lazım. **PAY-02** (e2e 3DS): §3.1-də artıq işlək ölçülüb. **LAND-05** (backend-söndü): simulyasiya olunmur.
+- **REG-11** (ayırma): sərbəst qoşula bilən store bağlayıcısı lazım. **PAY-02** (e2e 3DS): §3.1-də artıq işlək ölçülüb.
+
+### Re-check pass — yeni keçənlər
+- **I18N-01 ✅**: tətbiq dili ru edildikdə `/chat/plans` tam ruscadır (2640 kiril simvolu, AZ qalığı yox, xam açar yox).
+- **LAND-05 ✅**: `/billing/plans` söndürüləndə landing qiymət bölməsi **sağlam** deqradasiya edir (undefined/NaN/xam JSON yox, çökmür).
+- **WSHOP-02 (qismən)**: yer sayına görə total düzgün hesablanır (1/3/10/50 → 5/15/50/250 ₼); amma bu işçidə həcm-tier yoxdur (tier discount tier-li işçi tələb edir).
+- **Qalan connector-detail klasteri** (REG-07/08/10/11) + **APPR-04**: hamısı bağlayıcı DETAL səhifəsindəki əməl düymələri (Qoşul/Ayır/token/1C) və ya per-tool öz-təsdiq dropdown-u tələb edir; detal naviqasiyası avtomatlaşdırmada qeyri-sabitdir və lazımi bağlayıcılar (bearer/1C) bu tenant mağazasında yoxdur. Manual (hər biri ~2 dəq) lazımdır — məhsul qüsuru deyil.
 
 ## 4. İcra edilə bilməyən testlər və səbəbi
 

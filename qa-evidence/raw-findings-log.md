@@ -75,3 +75,22 @@
 - /chat/settings renders fully localized: read-only approver ("Özü (təyin edilmiş təsdiqləyici yoxdur)" — confirms PROF-07 UI), connector-level approver section, LLM model + "org default" + "Defolta qayıt", Dil=Azərbaycan, Tema=İşıqlı, "Düşüncə addımlarını göstər" toggle, Səs/audio (ASR Gemini 3 Flash, TTS Gemini 3.1 Flash TTS, TTS Səsi Kore, auto-speak toggle), balance "231.39 ₼", plan "Plus".
 - /chat/registry renders: scope tabs Hamısı/Təşkilat/Şəxsi, counter "2 bacarıq", personal skill (delete enabled) + org-scope "schedule" (lock badge) — confirms REG-01/02/05 UI and member cannot delete org skill.
 - Screenshots saved: shot_registry/approvals/schedules/profile/settings.png
+
+## Browser UI deep pass (Playwright/Chromium) — desktop 1905px + mobile 390px + dark
+### LAND (landing)
+- LAND-01 🔴 PASS: landing (az + en) pricing section renders and MATCHES backend: Free, Pro 19.99 ₼ (AI 5.00), Plus 34.00 ₼ (AI 15.00), Enterprise + On-premise "Satışla əlaqə"; guest/platform not shown. Full page (hero, 8 feature cards, connector logos, how-it-works, FAQ, legal footer). No raw keys.
+### Desktop interactive (member)
+- REG-02 UI PASS: "Yeni bacarıq yarat" modal with name/description/required-params fields. Zero console errors.
+- REG-01 UI PASS: scope tabs (Hamısı/Təşkilat/Şəxsi) + counter "N bacarıq".
+- SCHED-01 UI PASS: create modal complete — Başlıq, Vəziyyət(Aktiv), Cədvəl(Gündəlik)+time(08:00), "Bitmə tarixi təyin et", Tapşırıq mətni, "Təsdiqi ötür" toggle (off=approval required), "Kim təsdiqləyir" approver checkboxes + helper text explaining self-approval delegation (visually confirms APPR-05). Raw cron NOT shown (friendly cadence). 
+- PLAN-02/03 + WALLET-01/02 UI PASS: /chat/plans "Paketlər və balans" — balance 231.39 ₼, 30-day spend + runway forecast, plan cards with Plus="Cari paket", Enterprise/On-premise "Sazişlə", member note "Paketi yalnız təşkilatın admini dəyişə bilər".
+- APPR-08 UI PASS: views (Mənim / Mənə təyin edilib) + 3 tabs (Gözləyən/Təsdiqlənmiş/Rədd edilmiş).
+- §0.4 mandatory on ALL screens (registry/approvals/schedules/profile/settings/plans): no horizontal scroll, no raw i18n keys, no raw JSON/[object Object], ZERO console errors, no unexpected 4xx/5xx.
+### Mobile 390px
+- REG-18/APPR-12/SCHED-10/PROF-08/RESP-01 PASS: NO horizontal scroll on any screen (scrollWidth==390==viewport). Schedule create modal fits viewport, "Yarat" button visible/reachable, fields stack cleanly.
+### Dark theme (PROF-06 / RESP-03)
+- PASS: all screens render dark (bg rgb16,16,18), text readable, FORM BOXES clearly distinguishable from background (the documented regression "forma qutuları görünmür" is NOT present), toggles + "Yadda saxla" visible. Tema selector shows "Qaranlıq rejim". Theme stored client-side only (orgsysai-session.state.theme) — confirms known design.
+
+## Additional findings (Low)
+- L-5 (format, PLAN-09/LAND-01): decimal separator is a DOT across landing + app ("19.99 ₼", "34.00 ₼", "231.39 ₼"), but handoff §0.2 specifies COMMA for AZN ("19,99 ₼"). Consistent i18n/format deviation. Low.
+- L-6 (profile, PROF-01): profile text fields (e.g. position) CANNOT be cleared via PATCH /auth/me — empty string, null, and whitespace are all treated as no-op (old value preserved), and the PATCH response value is inconsistent with the stored value. Low.

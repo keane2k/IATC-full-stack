@@ -19,11 +19,11 @@
 | Göstərici | Say |
 |---|---:|
 | API səviyyəsində icra edilən / təsdiqlənən yoxlama | **29 PASS** + 12 bilinən davranışın canlı ölçülməsi |
-| Brauzer duman testi (ekran) | 5 ekran (registry, approvals, schedules, profile, settings) — hamısı §0.4 məcburi yoxlamalarından keçdi |
+| Brauzer UI testi (desktop 1905px + mobil 390px + tünd tema) | **15+ ekran/axın** — hamısı §0.4 məcburi yoxlamalarından keçdi |
 | **Yeni Kritik qüsur** | **0** |
 | **Yeni Yüksək qüsur** | **0** |
 | Orta səviyyəli qeyd (sənədlə uyğunsuzluq / zəiflik) | 2 |
-| Aşağı səviyyəli qeyd | 4 |
+| Aşağı səviyyəli qeyd | 6 |
 | Bilinən problemlərin canlı təsdiqi (yeni deyil) | 4 (TZ · illik paket · kart saxlama · zəif parol serveri) |
 | İcra edilə bilməyən (səbəbi ilə, §2.3) | ~25 UI/mobil + 11 canlıda qadağan (§0.4) |
 
@@ -77,6 +77,8 @@
 - **L-2 (schedules):** Cədvəl silinəndə onun **gözləyən təsdiqi ləğv olunmur** (yetim təsdiq qalır). Kiçik.
 - **L-3 (approvals):** Rədd səbəbi serverdə 2000 simvolla məhdudlaşmır (2001 simvol qəbul edildi) — limit yalnız UI-dədir.
 - **L-4 (ai-prices):** `usd_azn_rate` canlıda **1.8**-dir (sənəddə standart 1.70 yazılıb) — konfiqurasiya dəyişib, qüsur deyil, sadəcə qeyd.
+- **L-5 (format, PLAN-09/LAND-01):** həm landing-də, həm tətbiqdə onluq ayırıcı **nöqtədir** (`19.99 ₼`, `34.00 ₼`, `231.39 ₼`), amma sənəd §0.2 AZN üçün **vergül** gözləyir (`19,99 ₼`). Ardıcıl i18n/format uyğunsuzluğu.
+- **L-6 (profil, PROF-01):** profil mətn sahələri (məs. “Vəzifə”) `PATCH /auth/me` ilə **təmizlənə bilmir** — boş sətir, `null` və boşluq hamısı köhnə dəyəri saxlayır (dəyişiklik baş vermir), həm də cavabdakı dəyər saxlanan dəyərlə ziddiyyətlidir.
 
 ### 2.5 Bilinən problemlərin canlı təsdiqi (yeni qüsur kimi açılmır)
 
@@ -100,6 +102,18 @@
 
 ---
 
+## 3.5 Brauzer UI nəticələri (Playwright — desktop 1905px · mobil 390px · tünd tema)
+
+Parol qapısı (`bercberc`) və giriş işlədi. Bütün yoxlanılan ekranlarda **§0.4 məcburi yoxlamalar keçdi**: üfüqi sürüşmə yoxdur · xam i18n açarı yoxdur · xam JSON/`[object Object]` yoxdur · **konsol xətası sıfır** · gözlənilməz 4xx/5xx yoxdur.
+
+- **LAND-01 🔴 PASS:** landing (az + en) qiymət bölməsi backend ilə **uyğun** (Free · Pro 19.99 ₼ · Plus 34.00 ₼ · Enterprise/On-premise “Satışla əlaqə”; guest/platform gizli). Səhifə tam (hero, imkan kartları, bağlayıcı loqoları, FAQ, hüquqi footer).
+- **REG-01/02 UI PASS:** scope tabları (Hamısı/Təşkilat/Şəxsi) + sayğac; “Yeni bacarıq yarat” modalı (ad/izah/parametrlər).
+- **SCHED-01 UI PASS:** yaratma modalı tam — Başlıq · Vəziyyət · Cədvəl (Gündəlik) **+ saat (08:00)** · “Bitmə tarixi təyin et” · Tapşırıq mətni · “Təsdiqi ötür” açarı · **“Kim təsdiqləyir”** təsdiqçi seçimi + izah mətni (APPR-05 delegasiyasını vizual təsdiqləyir). Xam cron göstərilmir.
+- **PLAN-02/03 + WALLET-01/02 UI PASS:** `/chat/plans` “Paketlər və balans” — balans 231.39 ₼, 30 günlük sərf + proqnoz, Plus=“Cari paket”, “Paketi yalnız admin dəyişə bilər” qeydi.
+- **APPR-08 UI PASS:** görünüşlər (Mənim / Mənə təyin edilib) + üç sekme (Gözləyən/Təsdiqlənmiş/Rədd).
+- **Mobil 390px (REG-18 · APPR-12 · SCHED-10 · PROF-08 · RESP-01) PASS:** heç bir ekranda üfüqi sürüşmə yoxdur; cədvəl yaratma modalı ekrana sığır, “Yarat” düyməsi görünür.
+- **Tünd tema (PROF-06 · RESP-03) PASS:** fon qaranlıq, mətn oxunur, **forma qutuları fondan fərqlənir** (əvvəlki reqressiya təkrarlanmır); açarlar və “Yadda saxla” görünür.
+
 ## 4. İcra edilə bilməyən testlər və səbəbi
 
 **A. Canlı sistemdə qadağan olanlar (§0.4):** SUSP-01…05 (hamısı `period_end`/`suspension_floor_date` baza yazması tələb edir) · OFFER-01/02 (boş filtrli təklif = bütün platformaya endirim) · PAY-03/07/08 · CARD-05 · OFFER-06 · SPAY-03. **Səbəb:** canlı bazaya yazma / real ödənişlərin sındırılması / 24 saat gözləmə.
@@ -108,7 +122,7 @@
 
 **C. İnteraktiv/qeyri-deterministik (AI söhbət axını):** APPR-01/02/03/04 (🔁3), WORKER-03/04/05, CHAT-dan irəli gələn təsdiq kartları — canlı AI alət-çağırışı tələb edir; avtomatlaşdırılmış təkrarlana bilən qara-qutu üçün uyğun deyil. **Təhlükəsizlik qapısı** cədvəl-mənşəli təsdiqlə dolayı yolla sübut edildi (SCHED-04 + APPR-05).
 
-**D. Sırf UI/vizual/mobil:** drag-drop fayl yükləmə (REG-04), OAuth popup (REG-07), token maskalanması (REG-08), 1C formu (REG-10), 390px mobil (hər bölmənin son testi), tünd tema (PROF-06/RESP-03), landing vizual qiymət bölməsi (LAND-01/05, SPA JS ilə render olunur). **Tövsiyə:** bunlar manual/interaktiv sessiyada tamamlanmalıdır.
+**D. Qalan sırf-interaktiv UI (brauzer passından sonra qalanlar):** drag-drop fayl yükləmə və tip/ölçü limitləri (REG-04), real OAuth popup axını (REG-07), token sahəsinin maskalanması (REG-08), 1C forму (REG-10), işçi söhbət sessiyası və “Qoş” kartı (WORKER-04/05/06), LAND-05 (backend söndükdə fallback). **Qeyd:** 390px mobil (REG-18/APPR-12/SCHED-10/PROF-08/RESP-01), tünd tema (PROF-06/RESP-03), yaratma modalları (REG-02/SCHED-01) və landing qiyməti (LAND-01) **artıq brauzerlə icra olundu** (§3.5). Qalanlar üçün real xarici xidmət / fayl / provayder qoşulması lazımdır.
 
 ---
 

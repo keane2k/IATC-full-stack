@@ -166,6 +166,22 @@ Qalan üç test brauzerlə tamamlandı — **SCHED bölməsi tamdır (10/10)**.
 
 Əvvəl API ilə: WORKER-01 (yaratma/409/422, yalnız super admin), WORKER-09 (üzv abunə qapısı 403, AZN qiymət).
 
+## 3.10 Super-admin ilə açılan + qalan yarımçıqlar (yekun pass)
+
+**Yeni tamamlananlar:** SPAY-02 ✅ (ödəniş cədvəli — bütün sütunlar/statuslar; 19 «expired» = PAY-08 TTL dolayı) · SPAY-06 ✅ (ödəniş ayarları tam; **sirlər maskalanıb** secret_key/callback_secret=None; M-2 təsdiqi password_min_length=1) · WSHOP-01 ✅ (mağaza qiyməti=faktiki 5.00 AZN) · PLAN-08 ✅ (free-ə enmə 4 user-lə 422 təmiz) · WALLET-03 ✅ (sürətli məbləğlər 50/100/200) · LAND-02 ✅ (hero → /chat?q=) · LAND-03 ✅ (/ru→/en, /terms, /privacy) · LAND-04 ✅ (responsiv 390/1905) · RESP-02 ✅ (super-admin cədvəl 1280px sürüşmə yox) · RESP-04 ✅ əsas (klaviatura fokus, düymələr etiketli; **bilinən `<html lang>=en` təsdiqləndi**).
+
+**SPAY-04 🟡:** qiymət redaktəsi imkanı təsdiqləndi (PATCH icazəli, struktur görünür), amma **canlı qiymət dəyişikliyi qəsdən edilmədi** (real tenant-ların paylaşdığı produksiya kataloqu; harness mühafizəsi də blokladı — düzgün sərhəd). Staging-də edilməlidir.
+
+### Genuinely bloklu (bu mühitdə mümkün deyil — səbəbi ilə)
+- **Google OAuth tamamlanması** (avtomatlaşdırmada CAPTCHA): REG-07 (tətbiq tərəfi ✅), WORKER-05/06.
+- **Kart saxlama söndürülüb** (bilinən): CARD-01…06.
+- **DB manipulyasiyası** (§0.4): SUSP-01/03/04/05 (period_end/floor_date).
+- **Canlıda qadağan** (§0.4): PAY-03/07/08, OFFER-01/02/06, SPAY-03.
+- **Paylaşılan produksiya konfiqi**: SPAY-04 canlı qiymət (imkan təsdiqləndi).
+
+### Manual tələb edən kiçik qalıqlar (məhsul qüsuru deyil, avtomatlaşdırma limiti)
+REG-08 (token maskası), REG-10 (1C formu), REG-11 (ayırma — sərbəst qoşula bilən store bağlayıcısı lazım), REG-03/17 (offline nüanslar), APPR-04 (özü-təsdiq — alət-səviyyəli öz konfiq), PAY-02 (e2e 3DS — §3.1-də artıq ölçülüb işləyir), LAND-05 (backend-söndü fallback — simulyasiya olunmur).
+
 ## 4. İcra edilə bilməyən testlər və səbəbi
 
 **A. Canlı sistemdə qadağan olanlar (§0.4):** SUSP-01…05 (hamısı `period_end`/`suspension_floor_date` baza yazması tələb edir) · OFFER-01/02 (boş filtrli təklif = bütün platformaya endirim) · PAY-03/07/08 · CARD-05 · OFFER-06 · SPAY-03. **Səbəb:** canlı bazaya yazma / real ödənişlərin sındırılması / 24 saat gözləmə.

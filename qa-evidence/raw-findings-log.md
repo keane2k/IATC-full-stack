@@ -151,3 +151,30 @@
 - WORKER-05 🟡 (connect "Qoş" card) / WORKER-06 🟡 (connections panel): need a worker carrying an auth-requiring connector + the user connecting their OWN external service. Setting connectors on a worker via API didn't take (format), and completing the connect hits Google's CAPTCHA (same as REG-07). Mechanism is the same connect-card flow proven elsewhere; full test needs manual.
 ### WORKER FINAL: 8 PASS (01,02,03,04,07,08,09,10) + 2 partial (05,06). Core chain create->offer->assign->session + asymmetric revoke + delete/archive + commerce guard all validated.
 ### CLEANUP: QA Worker Chain archived (has a session, can't hard-delete); access rules removed; no active test workers.
+
+## Super-admin-unlocked + remaining partials (batch 1, API)
+- SPAY-02 ✅: /super-admin/payments — 30 rows, full columns (amount, masked_pan, card_brand, status, kind, period_start/end, settled_at, tenant_name, failure_reason, gateway_status). Statuses pending/expired/paid; kinds topup/checkout. (19 "expired" = abandoned checkouts -> confirms PAY-08 order TTL expiry indirectly.)
+- SPAY-04 🟡 capability verified: GET shows all 7 plans incl. hidden (guest/platform), price_monthly/price_yearly/features/subscriber_count; PATCH /super-admin/plans/{code} is allowed. LIVE price edit intentionally NOT performed (production plan catalog shared by real tenants; harness safety guard also blocked it — correct boundary). Recommend editing on staging.
+- SPAY-06 ✅: /super-admin/platform-settings — 56 settings incl. full payment section (payriff.enabled=true/mode=test/merchant_id/ttl=60/card_save=false/auto_renew=true/renew_grace_days=3/expire_action=suspend; billing.currency=AZN/usd_azn_rate=1.8/margin=25/min_topup=10/quick=50,100,200). SECRETS MASKED: payriff.secret_key=None, payriff.callback_secret=None (no raw secret exposure ✓). Also confirms M-2: auth.password_min_length=1.
+- WSHOP-01 ✅: worker quote unit_price=list_price=5.00 AZN (store price == actual, no discrepancy), tier=None, currency AZN.
+- PLAN-08 ✅: free downgrade with 4 active users -> 422 "This organisation has 4 active users, so it needs at least 4 seats" (clean validation; free max 1 seat).
+- WALLET-03 ✅: quick top-up amounts [50,100,200], min 10 (matches config).
+
+## Remaining partials — final pass (batch 2, browser)
+- LAND-02 ✅: hero input submit -> routes to /chat?q=<question> (question carried into chat).
+- LAND-03 ✅: /ru -> redirects to /en (ru not on landing); /terms and /privacy exist (200).
+- LAND-04 ✅: landing responsive — no horizontal scroll at 390px (sw=390) and 1905px.
+- RESP-02 ✅: /super-admin/payments table at 1280px — no horizontal scroll, no column drift, no raw JSON, 0 console errors.
+- RESP-04 (a11y basics) ✅/known: keyboard Tab focuses a labeled link; all 57 buttons labeled (btnNoLabel=0); no <img> without alt. CONFIRMS known issue: <html lang>="en" even in AZ (§7.2) — accessibility defect, documented.
+- REG-08 (token masking, 🔴) — NOT captured: store token connectors are OAuth-based (Notion = mcp_http·OAuth 2.0, not bearer); custom-server form's token field (API tokeni auth) not revealed via scripted auth-dropdown selection. Needs 1-min manual check (type a token, confirm dots).
+
+## FINAL STATUS of all remaining partials (honest categorization)
+DONE this session beyond earlier: SPAY-02, SPAY-06, WSHOP-01, PLAN-08, WALLET-03, LAND-02/03/04, RESP-02, RESP-04(basics), WORKER-02/03/04/07/08, APPR-01/03/10, REG-04/06/13/15/16, SCHED-07/08/09, REG-12.
+GENUINELY BLOCKED (cannot complete in this environment, with reason):
+  - Google OAuth completion (CAPTCHA on automated login): REG-07 (app-side verified), WORKER-05/06.
+  - card_save disabled by Payriff (known): CARD-01..06.
+  - DB manipulation required (§0.4): SUSP-01/03/04/05 (period_end/suspension_floor_date).
+  - Live-forbidden per handoff §0.4: PAY-03/07/08, OFFER-01/02/06, SPAY-03.
+  - Shared production-config modification (harness safety guard, correct): SPAY-04 live price edit (capability verified).
+NEEDS MANUAL (small, environment-automation limits, not product blockers):
+  - REG-08 (token field masking), REG-10 (1C form), REG-11 (disconnect — needs freely-connectable store connector), REG-03/17 (offline nuances), APPR-04 (self-inline approve — needs per-tool self-config), PAY-02 (e2e 3DS — already measured working in §3.1), LAND-05 (backend-down fallback — can't simulate).

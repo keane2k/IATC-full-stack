@@ -10,7 +10,7 @@
 
 ## 0. Bir cümləlik nəticə (sahibə)
 
-> **Buraxıla bilər — amma şərtlə.** Voice-dən sonrakı funksionallıqda (reyestr, təsdiqlər, cədvəllər, AI işçilər, profil, ödəniş/paket) **yeni Kritik və ya Yüksək qüsur tapılmadı**: təhlükəsizlik qapıları (özünü-təsdiq qadağası, RBAC, paket kilidləri, saxta ödəniş bildirişi, təkrar e-poçt, parol dəyişəndə token ləğvi) **işləyir**, və pul riyaziyyatı (qiymətlər, yer başına ödəniş, endirim, pulqab) **düzgündür**. Buraxılışdan əvvəl düzəldilməsi tövsiyə olunan yeganə ciddi məqam — **parol qaydalarının serverdə yoxlanılmaması** (artıq “bilinən” kimi qeyd olunub, amma təhlükəsizlik baxımından yüksəldilməlidir).
+> **Buraxıla bilər — amma iki şərtlə.** Voice-dən sonrakı funksionallıqda təhlükəsizlik qapıları (özünü-təsdiq qadağası, RBAC, paket kilidləri, saxta ödəniş bildirişi, təkrar e-poçt, parol dəyişəndə token ləğvi) **işləyir** və pul riyaziyyatı (qiymətlər, yer başına ödəniş, endirim, pulqab, uçdan-uca ödəniş) **düzgündür**; **Kritik qüsur yoxdur**. Buraxılışdan əvvəl bağlanmalı iki məqam: **(1) 🔴 H-1 — `max_redemptions` limitli kampaniya limitdən çox istifadə oluna bilir** (endirim checkout başlayanda bronlanmır; iki real ödənişlə canlıda sübut olundu — `topup`/`ai_worker` üçün 100 % endirim icazəli olduğundan itki potensialı limitsizdir); **(2) parol qaydalarının serverdə yoxlanılmaması** (M-2).
 
 ---
 
@@ -21,15 +21,42 @@
 | API səviyyəsində icra edilən / təsdiqlənən yoxlama | **29 PASS** + 12 bilinən davranışın canlı ölçülməsi |
 | Brauzer UI testi (desktop 1905px + mobil 390px + tünd tema) | **15+ ekran/axın** — hamısı §0.4 məcburi yoxlamalarından keçdi |
 | **Yeni Kritik qüsur** | **0** |
-| **Yeni Yüksək qüsur** | **0** |
-| Orta səviyyəli qeyd (sənədlə uyğunsuzluq / zəiflik) | 2 |
+| **Yeni Yüksək qüsur** | **1** (H-1 — limitli təklifin limitdən çox istifadəsi) |
+| Orta səviyyəli qeyd (sənədlə uyğunsuzluq / zəiflik) | 5 (M-1…M-5) |
 | Aşağı səviyyəli qeyd | 6 |
-| Bilinən problemlərin canlı təsdiqi (yeni deyil) | 4 (TZ · illik paket · kart saxlama · zəif parol serveri) |
-| İcra edilə bilməyən (səbəbi ilə, §2.3) | ~25 UI/mobil + 11 canlıda qadağan (§0.4) |
+| Bilinən problemlərin canlı təsdiqi (yeni deyil) | 6 (TZ · illik paket · kart saxlama · zəif parol serveri · OFFER-02 təsdiqsiz redaktə · PAY-05 banner qolları) |
+| Düzəldiyi aşkarlanan köhnə problem | 2 (OFFER-04 «Müddət» sütunu kəsilməsi · WALLET-08 xəbərdarlığın heç vaxt çıxmaması) |
+| İcra edilə bilməyən (səbəbi ilə, §4) | ~25 UI/mobil + 11 canlıda qadağan (§0.4) |
 
 ---
 
 ## 2. Tapıntılar
+
+### 2.0 🔴 H-1 (YÜKSƏK) — Limitli təklif limitdən çox istifadə oluna bilir
+
+| | |
+|---|---|
+| **Test ID** | OFFER-06 (həmçinin OFFER-04 addım 4-5) |
+| **Ciddilik** | **Yüksək** (aktiv 100 %-lik `topup` təklifi varsa — **Kritik**) |
+| **Təkrarlanma** | 3/3 — tam deterministik |
+| **Rol / ekran** | tenant admin · `/chat/plans` → Payriff |
+
+**Addımlar (canlıda faktiki icra olundu, QA tenant `fede76fa…`):**
+1. Super-admin: `topup` hədəfli, **`max_redemptions = 1`**, 10 % endirimli aktiv təklif.
+2. Tenant: `POST /billing/wallet/topup {amount_azn:"10"}` → sifariş #1 — **tutulan 9.00 ₼**, yazılacaq 10.00 ₼, `offer_id` təyin olunub.
+3. Təklifin vəziyyəti: `in_progress_count = 1`, **lakin `remaining_redemptions` hələ də `1`**.
+4. Eyni tenant, **ödəniş bitmədən** ikinci `POST .../topup {10}` → sifariş #2 də **9.00 ₼** və **eyni `offer_id`**.
+5. Hər iki sifariş Payriff sandbox-da real ödənildi (3DS → `payment=ok`).
+
+**Faktiki nəticə:** balans **0 → 20.00 ₼**, ödənilən cəmi **18.00 ₼** → `max_redemptions=1` olan kampaniya **iki dəfə** işlədildi. Təklifin `redemption_count` sayğacı isə **1**-də qaldı (real istifadəni az göstərir).
+
+**Gözlənilən (handoff OFFER-06):** «Təklif checkout başlayanda bronlanır… birinci tab bronu tutur → ikinci tab **tam qiyməti** görür.» — baş vermir.
+
+**Kök səbəb (davranışdan):** qapı yalnız `redemption_count`-a baxır; `in_progress_count` (açıq checkout) `remaining`-dən çıxılmır. Checkout yaradılması ↔ ödənişin oturması arasındakı pəncərə qorunmur. Ödəniş oturduqdan **sonra** qapı düzgün işləyir (üçüncü checkout tam qiymət — 10.00 ₼, `offer_id:""`).
+
+**Niyə yüksək:** `topup` və `ai_worker` üçün **100 % endirim icazəlidir** (OFFER-05-ə bax). `max_redemptions=1` + 100 % `topup` təklifi ilə istifadəçi N ədəd checkout açıb hamısını ödəyərək **N dəfə pulsuz balans** ala bilər — itki limitsizdir. Həmçinin formanın öz vədi pozulur: «Bir təşkilat onsuz da yalnız bir dəfə istifadə edə bilir».
+
+**Tövsiyə:** checkout yaradılarkən atomar rezervasiya — `remaining = max − redeemed − in_progress`, rezervasiyanın TTL ilə geri buraxılması (uzlaşdırma süpürgəsi onsuz da var).
 
 ### 2.1 🔴 Təhlükəsizlik qapıları — HAMISI KEÇDİ (ən vacib nəticə)
 
@@ -70,6 +97,33 @@
 - **Test ID:** PROF-03
 - **Gördüm:** Server **3 simvolluq parolu**, **istifadəçi adı ilə eyni parolu** qəbul etdi və `confirm_password` uyğunsuzluğunu nəzərə almadı. Bütün qaydalar (≥10 simvol, istifadəçi adından fərqli, təsdiq uyğunluğu) yalnız **ön üzdədir**.
 - **Qeyd:** Sənəddə “bilinən problem” kimi var, ona görə **yeni qüsur kimi açılmır**, amma parol siyasətinin serverdə yoxlanılmaması real zəiflikdir və buraxılışdan əvvəl düzəldilməsi tövsiyə olunur.
+
+**Qeyd M-3 — `[offers] Rədd səbəbi yalnız ingilis dilindədir`**
+- **Ciddilik:** Orta (lokalizasiya; handoff-un uğursuzluq əlamətlərindən biri)
+- **Test ID:** OFFER-05
+- **Gördüm:** `plan` hədəfli 100 % / pulsuz dövr / tam qiymətə bərabər sabit endirim cəhdləri **düzgün şəkildə 400 ilə rədd olunur**, lakin səbəb AZ interfeysdə belə ingiliscədir: «A plan offer cannot take the price to zero. Give that organisation a free period on its plan instead. Here, 100 % off leaves nothing to charge.»
+- **Tövsiyə:** mesajı `az/en/ru` üzrə tərcümə etmək (məntiq düzgündür, yalnız dil problemi).
+
+**Qeyd M-4 — `[offers] Aktiv təklifi redaktədə genişləndirmək təsdiqsiz keçir` (bilinən boşluq — canlıda təsdiqləndi)**
+- **Ciddilik:** Orta
+- **Test ID:** OFFER-02
+- **Gördüm:** Aktiv (`state=live`) təklifdə «Redaktə» → paket məhdudiyyəti (`Pro`) söndürüldü → «Saxla» → **heç bir təsdiq pəncərəsi çıxmadı**; `PATCH` dərhal göndərildi (`eligible_plan_codes:[]`, `active:true`). Hal­buki **aç/söndür** açarı təsdiq tələb edir (OFFER-01-də sübut olundu: «Təklif hamı üçün işə salınsın?»). Asimmetriya realdır. Məhdudiyyət silindikdən sonra formadakı qırmızı xəbərdarlıq da yenilənmədi.
+- **Təhlükəsizlik qeydi:** sorğu brauzerdə **abort edildi** — dəyişiklik serverə çatmadı, canlıda heç nə dəyişmədi (sonradan yoxlandı: təklif hələ də `['pro']`).
+
+**Qeyd M-5 — `[payments] ?payment= dörd dəyərindən yalnız ikisi düzgün ayrılır` (bilinən 🔴 — canlıda təsdiqləndi)**
+- **Ciddilik:** Orta (müştəri çaşqınlığı / dəstək yükü)
+- **Test ID:** PAY-05
+- **Ölçülən (banner müvəqqəti olduğu üçün 150 ms-lik nümunələmə ilə tutuldu):**
+
+| Parametr | Göstərilən mesaj | Qiymət |
+|---|---|---|
+| `ok` | «Ödəniş alındı. Paketiniz yeniləndi.» | ✅ |
+| `failed` | «Ödəniş alınmadı.» | ✅ |
+| `error` | «Ödəniş yoxlanılır. Bank cavab verən kimi paketiniz yenilənəcək.» | 🔴 |
+| `cancel` | **eyni** «Ödəniş yoxlanılır…» | 🔴 |
+| `unknown` | **eyni** «Ödəniş yoxlanılır…» | 🔴 |
+
+- Yalnız `failed` ayrıca tutulur; ödənişi **özü ləğv edən** istifadəçiyə «ödənişiniz yoxlanılır» deyilir, `unknown` halında isə sifariş nömrəsi ümumiyyətlə gəlmir — heç nə yoxlanmır, amma istifadəçiyə gözləmək tövsiyə olunur. Xam kod/i18n açarı sızmır.
 
 ### 2.4 Aşağı səviyyəli qeydlər
 
@@ -199,9 +253,40 @@ Qalan üç test brauzerlə tamamlandı — **SCHED bölməsi tamdır (10/10)**.
 - **WSHOP-02 (qismən)**: yer sayına görə total düzgün hesablanır (1/3/10/50 → 5/15/50/250 ₼); amma bu işçidə həcm-tier yoxdur (tier discount tier-li işçi tələb edir).
 - **Qalan connector-detail klasteri** (REG-07/08/10/11) + **APPR-04**: hamısı bağlayıcı DETAL səhifəsindəki əməl düymələri (Qoşul/Ayır/token/1C) və ya per-tool öz-təsdiq dropdown-u tələb edir; detal naviqasiyası avtomatlaşdırmada qeyri-sabitdir və lazımi bağlayıcılar (bearer/1C) bu tenant mağazasında yoxdur. Manual (hər biri ~2 dəq) lazımdır — məhsul qüsuru deyil.
 
+## 3.11 Təkrar-cəhd passı #2 — bu passda yeni açılan testlər
+
+Əvvəlki passda “bloklu” sayılan bir sıra test **yeni yanaşma ilə tam icra olundu**. Hamısı canlıda, öz yaratdığım QA tenant-ları üzərində; real təşkilatlara toxunulmadı.
+
+### PAY-02 ✅ — uçdan-uca real ödəniş (ən böyük açılış)
+Təzə free tenant → `POST /payments/checkout {plan_code:"pro"}` → **19.99 ₼** → Payriff kart formu (test kartı `4000 0075 4601 2078`) → **3-D Secure** səhifəsi → OTP → **`/chat/plans?payment=ok`**.
+Nəticə yoxlanışı: abunə **free → pro (active, 1 yer)**; pulqab **0 → 5.00 ₼** (lot `plan_allowance`, «pro allowance, month 1/1»); ödəniş sətri **`status=paid`, `gateway=APPROVED`, 19.99 ₼, `masked_pan=400000******2078`, `brand=VISA`**. Bununla **PAY-01 · PAY-09 · PAY-11** də təsdiqləndi.
+**CARD-01 ✅ (təsdiq):** uğurlu ödənişdən **sonra** `GET /payments/card` → `configured:false` → kart saxlanmır (bilinən `payriff.card_save=false` canlıda təsdiqləndi; CARD-02…06 ona görə aparıla bilmir).
+
+### WALLET-08 ✅ — balans bitəndə davranış (və köhnə 🔴 artıq yoxdur)
+Balansı **0** olan təzə free tenant üzərində:
+- `GET /billing/wallet` → `balance_enforced: **true**`, `free_fallback_available: false`. ⚠️ Handoff §8 deyirdi ki bugünkü kataloqda **bütün paketlərdə `false`-dur, ona görə xəbərdarlıq heç vaxt çıxmır** — canlıda artıq **`true`**-dur (həm free, həm ödənişli tenant-da). Yəni həmin 🔴 aradan qalxıb və davranış indi aktiv olduğu üçün test tam icra edilə bildi.
+- `/chat/plans` → **«Balans bitib»** xəbərdarlıq qutusu + «Paketi yüksəlt» ✅
+- Söhbətdə AI sorğusu → **402** `{"code":"balance_exhausted","required_azn":"0.1"}`; UI-da **xam kod yox**, azərbaycanca cümlə: «Balansınız boşdur: pulsuz 1 AZN e-poçtunuzu təsdiqlədikdən sonra veriləcək…» + «Paketlər və pulqabı» / «Yenidən cəhd et» ✅
+- Səs ucu → **403 `plan_required`** (free-də voice yoxdur) → **paket qapısı balans qapısından əvvəl** işləyir (düzgün ardıcıllıq). Təmiz «voice 402» üçün voice-lu paket + 0 balans lazımdır (əlçatan deyil).
+- Balans mənfi görünmür; ekrandakı vəd (`free_fallback=false` → «AI sorğuları dayanır») faktiki davranışla **eynidir** → uğursuzluq əlamətlərinin heç biri yoxdur.
+
+### OFFER bölməsi açıldı — düzgün endpoint tapıldı
+Əvvəl tapılmayan yaratma ucu **`POST /api/billing/offers/admin`**-dir (super-admin UI sniff ilə tapıldı; `/super-admin/offers` yalnız səhifə yoludur).
+
+- **OFFER-05 ✅ tam keçdi:** `plan` + 100 % → **400**; `plan` + `free_period` → **400**; `plan` + sabit endirim = tam qiymət (19.99) → **400**; qiymətdən çox (9999) → **400**. `topup` + 100 % → **yaradılır ✅**; `ai_worker` + 100 % → **yaradılır ✅**. Yəni qoruma **yalnız `plan` hədəfinə** aiddir — gözləntiyə tam uyğun. (Rədd səbəbinin dili → M-3.)
+- **OFFER-04 ✅ keçdi:** sabah başlayan → **«Planlanıb»**, dünən bitən → **«Bitib»**, aktiv limit 1 → **«İşləyir» (1/1 qalıb)**, `active=false` → **«Söndürülüb»**; tenant yalnız **aktiv olanı** görür (planlaşdırılmış/bitmiş/sönük banner **görünmür**) → yarıaçıq pəncərə təsdiqləndi. Kassa uyğunluğu: 10 % təklif ilə `topup 10 ₼` → **tutulan 9.00 / yazılan 10.00**, Payriff təsviri azərbaycanca: «Balans 10.00 AZN, endirim -1.00 AZN, ödəniləcək 9.00 AZN». Limit dolandan sonra → `state=exhausted`, banner yox olur, yeni checkout **tam qiymət** alır. 🟢 **Köhnə reqressiya düzəlib:** «Müddət» sütunu həm başlama, həm bitmə tarixini tam göstərir (kəsilmə yoxdur); «Vəziyyət» sütunu AZ dilindədir, xam kod deyil.
+- **OFFER-01 ✅ (təhlükəsiz hissələr; addım 7-8 qəsdən edilmədi — `[B]`):** boş filtrli formada qırmızı qeyd **hərfi-hərfinə gözlənilən mətndir** («Bu təklifdə nə təşkilat, nə plan, nə də məhsul məhdudiyyəti var. Kassa onu özü tətbiq edir — yəni bütün platformada bu növ hər alışa endirim düşür.»); siyahıda **«Hamıya düşür»** nişanı var; aktivləşdirmə təsdiqi **«Təklif hamı üçün işə salınsın?»** (+ izah + «Ləğv et» / «Təklifi işə sal»); əhatə önizləməsi **uydurma deyil** — «24 təşkilatdan 24-i» və plan kəsimi (Free·14, Pro·5, Plus·3, Enterprise·1) `GET /billing/offers/admin/audience` və `GET /super-admin/tenants` ilə **dəqiq üst-üstə düşür**. Həqiqi aktivləşdirmə (24 təşkilata endirim düşərdi) **edilmədi**; bütün yazma sorğuları brauzerdə bloklandı.
+- **OFFER-02 → M-4**, **OFFER-06 → H-1** (§2.0), **PAY-05 → M-5**.
+
+### Təhlükəsizlik və təmizlik qeydi (bu pass)
+- Bütün test təklifləri yalnız **öz QA tenant-ıma** bağlandı; OFFER-01-in boş filtrli təklifi **heç vaxt aktiv edilmədi**. Pass sonunda **8 QA təklifinin hamısı `off`** vəziyyətinə salındı (yoxlanıldı).
+- OFFER-02-də təhlükəli `PATCH` brauzerdə **abort edildi** — serverə çatmadı; sonradan təsdiqləndi ki təklif hələ də `eligible_plan_codes=['pro']`-dur.
+- Ödənişlər Payriff **sandbox**-dadır (real pul hərəkət etmir): PAY-02 üçün 19.99, H-1 sübutu üçün 2×9.00.
+
 ## 4. İcra edilə bilməyən testlər və səbəbi
 
-**A. Canlı sistemdə qadağan olanlar (§0.4):** SUSP-01…05 (hamısı `period_end`/`suspension_floor_date` baza yazması tələb edir) · OFFER-01/02 (boş filtrli təklif = bütün platformaya endirim) · PAY-03/07/08 · CARD-05 · OFFER-06 · SPAY-03. **Səbəb:** canlı bazaya yazma / real ödənişlərin sındırılması / 24 saat gözləmə.
+**A. Canlı sistemdə qadağan olanlar (§0.4):** SUSP-01…05 · PAY-03/07/08 · CARD-05 · SPAY-03 · OFFER-01 addım 7-8 (təklifi həqiqətən platforma üzrə aktivləşdirmək). **Səbəb:** canlı bazaya yazma / real ödənişlərin sındırılması / 24 saat gözləmə / bütün müştərilərə endirim düşməsi.
+> **Yenilik (pass #2):** OFFER-01-in qalan hissəsi, **OFFER-02** və **OFFER-04/05/06** artıq icra olundu (§3.11) — yazma sorğularını brauzerdə abort edərək və test təkliflərini yalnız öz QA tenant-ıma bağlayaraq. **SUSP** üçün əlavə cəhd: super-admin tenant obyekti abunə/`current_period_end` sahələrini **ümumiyyətlə çıxarmır** və `PATCH /super-admin/tenants/{id} {"current_period_end":…}` obyekti **dəyişiksiz** qaytarır → API ilə mümkün deyil, DB girişi lazımdır (bu, §0.4 ilə üst-üstə düşür).
 
 **B. CARD-01…06 və avtomatik yenilənmə:** Payriff `autoPay` söndürülüb (bilinən). Aparıla bilmir.
 
@@ -214,7 +299,7 @@ Qalan üç test brauzerlə tamamlandı — **SCHED bölməsi tamdır (10/10)**.
 ## 5. Metodologiya və məhdudiyyətlər (şəffaflıq)
 
 - Testlər **qara-qutu** API çağırışları (curl) + bir brauzer duman testi ilə aparılıb. Backend/frontend mənbə kodu əlçatan deyildi (verilən repozitoriya ayrı bir homework reposudur).
-- Pul hərəkət etməyib: bütün ödəniş testləri **sandbox** (`payriff.mode=test`) rejimindədir; checkout/topup yalnız **başladılıb**, 3-D Secure tamamlanmayıb (canlı abunəni dəyişməmək üçün). Bir neçə `pending` Payriff sifarişi 60 dəqiqəlik TTL ilə öz-özünə bitəcək.
+- Pul hərəkət etməyib: bütün ödəniş testləri **sandbox** (`payriff.mode=test`) rejimindədir. İlk passda checkout-lar yalnız **başladılıb**; **pass #2-də** PAY-02 və H-1 sübutu üçün 3-D Secure **tamamlanıb** (19.99 + 2×9.00 sandbox ödənişi) — hamısı **mənim yaratdığım QA tenant-larında**, real müştəri hesablarına toxunmadan. Bir neçə `pending` Payriff sifarişi 60 dəqiqəlik TTL ilə öz-özünə bitəcək.
 - **Yaradılan bütün test obyektləri təmizləndi:** 7 cədvəl, 1 bacarıq, 1 plagin, 2 bağlayıcı, 1 AI işçi silindi; gözləyən təsdiqlər rədd edildi; üzvün parolu (müvəqqəti PROF-03 testi üçün dəyişdirilmişdi) **`1`-ə geri qaytarıldı**; profil sahəsi bərpa edildi. Başqa təşkilatların datasına toxunulmadı.
 - Təsdiqçi/təşkilat adminin verdiyi e-poçt siyahısında kiçik yazı səhvi var idi: admin `kanan.ismayilzad**e**@berc.az` deyil, **`kanan.ismayilzad**a**@berc.az`** (tapşırıq mətnindəki ilk yazılışla) düzgün işləyir.
 
@@ -224,6 +309,12 @@ Qalan üç test brauzerlə tamamlandı — **SCHED bölməsi tamdır (10/10)**.
 
 Voice-dən sonrakı modullar **memarlıq baxımından sağlamdır**: icazə modeli ardıcıldır, təsdiq sistemi öz əsas vədini (özünü-təsdiq qadağası, təsdiqsiz icra olmaması) yerinə yetirir, paket bayraqları və rol qapıları düzgün tətbiq olunur, və bütün yoxlanılan pul hesablamaları (qiymət, yer başına, endirim, pulqab) **dəqiqdir**. Validasiya mesajları təmizdir (xam 500 yoxdur), UI tam lokallaşdırılıb və konsol/şəbəkə təmizdir.
 
-Buraxılış üçün diqqət tələb edən üç məqam **artıq bilinən**dir və bu dalğada **canlı ölçülüb təsdiqləndi**: (1) planlayıcıda saat qurşağı yoxluğu (+4 saat), (2) illik paketin alına bilməməsi, (3) kart saxlamanın söndürülməsi. Bunlardan **birincisi (TZ)** istifadəçiyə real təsir edir və tez düzəldilməlidir. Ayrıca **serverdə parol siyasətinin olmaması (M-2)** — sənəddə “bilinən” olsa da — təhlükəsizlik baxımından buraxılışdan əvvəl bağlanması tövsiyə olunur.
+**Buraxılışdan əvvəl bağlanmalı (prioritetlə):**
+1. **🔴 H-1 — limitli təklifin limitdən çox istifadəsi** (§2.0). Yeganə Yüksək tapıntı; birbaşa pul təsiri var və düzəlişi lokaldır (checkout-da atomar rezervasiya).
+2. **M-2 — serverdə parol siyasətinin olmaması.** Sənəddə “bilinən” olsa da, təhlükəsizlik baxımından bağlanmalıdır.
+3. **TZ (SCHED-02)** — planlayıcıda saat qurşağı yoxluğu (+4 saat), istifadəçiyə real təsir edir.
+4. Sonra: M-5 (`?payment=cancel/unknown` yanlış nikbin mesaj), M-4 (aktiv təklifin təsdiqsiz genişləndirilməsi), M-3 (ingiliscə rədd mesajı), illik paket, kart saxlama.
+
+**Bu dalğada düzəldiyi aşkarlanan köhnə problemlər:** OFFER-04 «Müddət» sütununun kəsilməsi (artıq tam görünür) və WALLET-08 «balans bitib» xəbərdarlığının heç vaxt çıxmaması (`balance_enforced` artıq `true`-dur və bütün zəncir düzgün işləyir).
 
 **Qalan UI/mobil/interaktiv testlər** (§4-C və §4-D) avtomatlaşdırılmış qara-qutu ilə örtülmədi və manual sessiyada tamamlanmalıdır; bu hesabat onların yerini dəqiq göstərir.

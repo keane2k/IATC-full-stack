@@ -353,3 +353,283 @@
 ---
 
 *Aşağı səviyyəli (L-1 … L-12) qeydlər ayrıca `QA-REPORT-post-voice.md` sənədinin §2.4 bölməsindədir.*
+
+---
+---
+
+# Aşağı səviyyəli (L-1 … L-12)
+
+---
+
+## L-1 — API xəta mesajları ingilis dilindədir
+
+**Komponent:** backend / API (ümumi)
+**Mühit:** https://orgsysai.com · REST API · az dili
+**Rol/Hesab:** istənilən rol
+
+**Təkrarlama addımları:**
+
+1. Dili `az` et
+2. Minimumdan az balans doldur: `POST /api/billing/wallet/topup {"amount_azn":"5"}`
+3. Free paketdə voice ucunu çağır: `POST /api/voice/transcribe`
+4. Balansı 0 olan təşkilatda `POST /api/chat` çağır
+5. Dayandırılmış təşkilatda yazma əməliyyatı et
+6. Hər cavabın `detail.message` sahəsini yaz
+
+**Gözlənilən nəticə:** İstifadəçiyə çatan mətnlər seçilmiş dildə olmalıdır.
+**Faktiki nəticə:** Xam API mesajları ingiliscədir: `«The smallest top-up is 10 AZN.»` · `«Your Free plan does not include this feature. Upgrade to keep going.»` · `«Your organisation's AI balance is used up. Top it up to keep going.»` · `«Your organisation is in read-only mode. Ask the platform owner to reactivate it.»`
+**Təsir:** UI bu mətnləri öz azərbaycanca variantı ilə əvəz etdiyi üçün son istifadəçiyə çatmır. Lakin `detail.message`-i birbaşa göstərən hər hansı səth (mobil tətbiq, inteqrasiya, skript, gələcək ekran) ingiliscə göstərəcək.
+**İstinad:** QA plan I18N-03 (Şlüz və backend mətnləri tərcümə olunur)
+**Severity: Low · Prioritet: Low · Status: Open**
+
+---
+
+## L-2 — Cədvəl silinəndə gözləyən təsdiqi ləğv olunmur (yetim təsdiq)
+
+**Komponent:** backend / schedules + approvals
+**Mühit:** https://orgsysai.com · REST API · az dili
+**Rol/Hesab:** tenant admin
+
+**Təkrarlama addımları:**
+
+1. `auto_approve: false` olan cədvəl yarat
+2. `POST /api/schedules/{id}/run` ilə işə sal — gözləyən təsdiq yaranır
+3. `GET /api/approvals?view=mine&status=pending` ilə təsdiqin olduğunu təsdiqlə
+4. `DELETE /api/schedules/{id}` ilə cədvəli sil (204)
+5. Təsdiq siyahısını yenidən oxu
+
+**Gözlənilən nəticə:** Mənbə cədvəl silinəndə onun gözləyən təsdiqi də ləğv edilməlidir (və ya «mənbəsi silinib» kimi işarələnməlidir).
+**Faktiki nəticə:** Cədvəl silinir, lakin gözləyən təsdiq **siyahıda qalır** — artıq mövcud olmayan cədvələ aiddir.
+**Təsir:** Təsdiq siyahısı yetim sətirlərlə dolur; təsdiqçi mövcud olmayan əməliyyatı təsdiqləyə bilər. Gözləyən sayğac da şişir.
+**İstinad:** QA plan SCHED-06 (Cədvəlin silinməsi)
+**Severity: Low · Prioritet: Low · Status: Open**
+
+---
+
+## L-3 — Rədd səbəbi serverdə uzunluq limiti ilə məhdudlaşmır
+
+**Komponent:** backend / approvals
+**Mühit:** https://orgsysai.com · REST API · az dili
+**Rol/Hesab:** təsdiqçi (tenant admin)
+
+**Təkrarlama addımları:**
+
+1. Gözləyən bir təsdiq yarat
+2. `POST /api/approvals/{id}/resolve` çağır, `action: "reject"` və **2001 simvolluq** səbəb mətni göndər
+3. Cavabı yaz
+4. UI-da eyni mətni yazmağa çalış və sahənin limitini müqayisə et
+
+**Gözlənilən nəticə:** Server UI ilə eyni limiti (2000 simvol) tətbiq etməlidir.
+**Faktiki nəticə:** Server **2001 simvolluq mətni qəbul etdi** — limit yalnız ön üzdədir.
+**Təsir:** API vasitəsilə ixtiyari uzunluqda mətn saxlanıla bilər (data şişməsi, UI-da kəsilmə/düzülüş pozulması riski).
+**İstinad:** QA plan APPR-03 (Rədd və səbəb)
+**Severity: Low · Prioritet: Low · Status: Open**
+
+---
+
+## L-4 — `usd_azn_rate` canlıda 1.8-dir (sənəddə 1.70 yazılıb)
+
+**Komponent:** backend / super-admin (AI qiymətləri)
+**Mühit:** https://orgsysai.com/super-admin/ai-prices · REST API · az dili
+**Rol/Hesab:** super admin
+
+**Təkrarlama addımları:**
+
+1. `GET /api/super-admin/ai-prices` çağır
+2. `settings.usd_azn_rate` dəyərini yaz
+3. QA sənədindəki standart dəyərlə müqayisə et
+
+**Gözlənilən nəticə:** Sənəddə standart `1.70` göstərilib.
+**Faktiki nəticə:** Canlıda **`usd_azn_rate = 1.8`** (`margin_percent = 25`). Hesablama daxili olaraq ardıcıldır — nümunə məbləğləri bu dəyərlərlə dəqiq uyğundur.
+**Təsir:** Qüsur deyil — konfiqurasiya dəyişib. Lakin sənədə əsaslanan hesablamalar/testlər səhv nəticə verəcək; sənəd yenilənməlidir.
+**İstinad:** QA plan SPAY-05 (`/super-admin/ai-prices` — dərəcə, marja, nümunə)
+**Severity: Low · Prioritet: Low · Status: Open (sənəd yenilənməsi)**
+
+---
+
+## L-5 — Rəqəm formatı en-US-dur (AZN üçün vergül gözlənilir)
+
+**Komponent:** web / ümumi (landing + tətbiq)
+**Mühit:** https://orgsysai.com/ və https://orgsysai.com/chat/plans · Chromium · az dili
+**Rol/Hesab:** ziyarətçi · tenant admin
+
+**Təkrarlama addımları:**
+
+1. Dili `az` et
+2. Landing səhifəsində qiymət bölməsinə bax
+3. `/chat/plans`-da paket qiymətlərinə və balans rəqəmlərinə bax
+4. Balans proqnozu sətrindəki gün sayına bax
+5. Onluq və minlik ayırıcıları yaz
+
+**Gözlənilən nəticə:** Sənəd §0.2-yə görə AZN üçün onluq ayırıcı **vergül** olmalıdır (`19,99 ₼`).
+**Faktiki nəticə:** Hər yerdə en-US formatı: onluq ayırıcı **nöqtə** (`19.99 ₼`, `34.00 ₼`, `226.25 ₼`), minlik ayırıcı **vergül** (`1,005 gün`).
+**Təsir:** Yerli formata uyğun deyil; ardıcıl i18n qüsuru. Azərbaycan istifadəçisi üçün `1,005` «bir tam beş» kimi oxuna bilər.
+**İstinad:** QA plan PLAN-09 · LAND-01 · §0.2 format qaydası
+**Severity: Low · Prioritet: Low · Status: Open**
+
+---
+
+## L-6 — Profil mətn sahələri təmizlənə bilmir
+
+**Komponent:** backend / auth (profil)
+**Mühit:** https://orgsysai.com/settings · REST API · az dili
+**Rol/Hesab:** adi üzv
+
+**Təkrarlama addımları:**
+
+1. Profildə «Vəzifə» (position) sahəsini doldur və saxla
+2. `PATCH /api/auth/me {"position": ""}` göndər — cavabı yaz
+3. `PATCH /api/auth/me {"position": null}` göndər — cavabı yaz
+4. `PATCH /api/auth/me {"position": " "}` (boşluq) göndər — cavabı yaz
+5. `GET /api/auth/me` ilə saxlanan dəyəri yoxla
+
+**Gözlənilən nəticə:** Boş sətir göndərildikdə sahə təmizlənməlidir.
+**Faktiki nəticə:** Üç variantın heç biri sahəni təmizləmir — **köhnə dəyər qalır**. Üstəlik PATCH cavabındakı dəyər bəzən saxlanan dəyərlə ziddiyyətli görünür.
+**Təsir:** İstifadəçi səhv yazdığı vəzifəni/departamenti silə bilmir, yalnız başqa mətnlə əvəz edə bilir. Cavabın saxlanan dəyərlə uyğunsuzluğu ön üzü çaşdıra bilər.
+**İstinad:** QA plan PROF-01 (Profil məlumatlarının saxlanması)
+**Severity: Low · Prioritet: Low · Status: Open**
+
+---
+
+## L-7 — `no_saved_card` cavabının mesajı xam koddur
+
+**Komponent:** backend / billing (avtomatik doldurma)
+**Mühit:** https://orgsysai.com/chat/plans · REST API · az dili
+**Rol/Hesab:** tenant admin
+
+**Təkrarlama addımları:**
+
+1. Saxlanmış kartı olmayan təşkilatla gir
+2. `GET /api/billing/wallet/auto-topup` çağır — `card_available` dəyərini yaz
+3. `PUT /api/billing/wallet/auto-topup {"enabled":true,"threshold_azn":"5","amount_azn":"20"}` çağır
+4. Cavabın `detail.code` və `detail.message` sahələrini yaz
+
+**Gözlənilən nəticə:** `message` sahəsi insan dilində izah olmalıdır (məs. «Əvvəlcə bir dəfə kartla balans artırın»).
+**Faktiki nəticə:** **409** `{"code":"no_saved_card","message":"no_saved_card"}` — `message` sahəsi **kodun özünü təkrarlayır**.
+**Təsir:** UI öz mətnini göstərdiyi üçün istifadəçiyə təsiri yoxdur, lakin API müqaviləsi natamamdır — `message`-i göstərən istənilən inteqrasiya istifadəçiyə `no_saved_card` yazacaq.
+**İstinad:** QA plan WALLET-05 (Avtomatik doldurma — qurulması)
+**Severity: Low · Prioritet: Low · Status: Open**
+
+---
+
+## L-8 — İşçi ödənişlərində kart məlumatı yazılmır
+
+**Komponent:** backend / billing (ödəniş sətirləri)
+**Mühit:** https://orgsysai.com/super-admin/payments · REST API · az dili
+**Rol/Hesab:** super admin
+
+**Təkrarlama addımları:**
+
+1. Kartla AI işçi alışı et (balansı 0 olan təşkilatla, 3DS tamamlanmaqla)
+2. `GET /api/super-admin/payments` çağır
+3. Yaranan `kind=worker` sətrini yaz
+4. Müqayisə üçün `kind=topup` və `kind=checkout` sətirlərinə bax
+
+**Gözlənilən nəticə:** Bütün uğurlu kart ödənişlərində `masked_pan` və `card_brand` sahələri dolu olmalıdır — ekranda bu sütunlar mövcuddur.
+**Faktiki nəticə:** `topup`/`checkout` sətirləri `«400000******2078»` və `«VISA»` saxlayır, lakin **`kind=worker` sətri boşdur** (`masked_pan:""`, `card_brand:""`); həmçinin `period_start`/`period_end` boşdur (dövr yalnız abunə obyektindədir).
+**Təsir:** Dəstək və uzlaşdırma zamanı işçi ödənişini konkret karta bağlamaq mümkün olmur; eyni ekranda sütunlar boş görünür.
+**İstinad:** QA plan SPAY-02 (`/super-admin/payments` cədvəli) · WSHOP-05
+**Severity: Low · Prioritet: Low · Status: Open**
+
+---
+
+## L-9 — «Satışla əlaqə» düyməsi ana səhifəni açır (`sales_contact_email` boşdur)
+
+**Komponent:** web / chat (paketlər səhifəsi)
+**Mühit:** https://orgsysai.com/chat/plans · Chromium · az dili
+**Rol/Hesab:** tenant admin · ziyarətçi
+
+**Təkrarlama addımları:**
+
+1. `/chat/plans` aç, `enterprise` və `onpremise` kartlarını tap
+2. «Satışla əlaqə» düyməsinin element növünü yoxla (`<a>` yoxsa `<button>`)
+3. `href` atributunu oxu
+4. Kliklə və hara apardığını yaz
+
+**Gözlənilən nəticə:** Ünvan `mailto:{sales_contact_email}` olmalıdır; ayar boşdursa fallback `https://orgsysai.com`.
+**Faktiki nəticə:** Element düzgündür — **`<a target="_blank">`**, qiymət yerində «Sazişlə» yazır, «hər istifadəçiyə / ay» sətri görünmür (hamısı doğru). Lakin `href = «https://orgsysai.com»`, yəni **`sales_contact_email` ayarı boşdur** və fallback işləyir.
+**Təsir:** Enterprise müştərisi «Satışla əlaqə» basır və sadəcə ana səhifəyə düşür — faktiki əlaqə yolu yoxdur. Texniki qüsur deyil, **konfiqurasiya boşluğudur**, amma satış itkisi deməkdir.
+**İstinad:** QA plan PLAN-04 («Satışla əlaqə» paketləri)
+**Severity: Low · Prioritet: Medium · Status: Open (konfiqurasiya)**
+
+---
+
+## L-10 — Ödəniş tarixçəsində xam `DECLINED` kodu müştəriyə görünür
+
+**Komponent:** web / chat (paketlər səhifəsi — ödəniş tarixçəsi)
+**Mühit:** https://orgsysai.com/chat/plans · Chromium · az dili
+**Rol/Hesab:** tenant admin
+
+**Təkrarlama addımları:**
+
+1. Balans doldurma checkout-u başlat
+2. Payriff-də kartı doldur, 3DS səhifəsində **qəsdən səhv OTP** yaz (rədd etdir)
+3. `/chat/plans` → «Ödəniş tarixçəsi» bölməsinə bax
+4. Rədd edilmiş sətrin nişanını və yanındakı mətni yaz
+
+**Gözlənilən nəticə:** Status insan dilində göstərilməlidir; xam şlüz kodu ekrana düşməməlidir.
+**Faktiki nəticə:** Statuslar düzgün lokallaşıb («**Alınmadı**» · «Gözləyir» · «Ödənilib»), lakin «Alınmadı» nişanının yanında şlüzün **xam kodu `DECLINED`** olduğu kimi göstərilir.
+**Təsir:** Müştəri texniki kod görür; testin «xam kod ekrana düşməməlidir» şərti pozulur. Həmçinin səbəb izah edilmir (kartda vəsait yoxdur? bank imtina etdi?).
+**Təklif:** Kodu insan cümləsinə çevir («Bank ödənişi rədd etdi») və ya «şlüz dedi: …» kimi işarələ.
+**İstinad:** QA plan PAY-13 (Ödəniş tarixçəsi və statuslar) · I18N-03
+**Severity: Low · Prioritet: Medium · Status: Open**
+
+---
+
+## L-11 — Təsdiq gözlənilən zaman kömək mətni yoxdur
+
+**Komponent:** web / chat (təsdiq kartı)
+**Mühit:** https://orgsysai.com/chat · Chromium · az dili
+**Rol/Hesab:** tenant admin / üzv
+
+**Təkrarlama addımları:**
+
+1. Təsdiq tələb edən alət çağıran sual göndər (məs. «Gmail-də yeni etiket yarat»)
+2. Söhbətdə təsdiq kartının çıxmasını gözlə
+3. Giriş qutusunun placeholder mətnini yaz
+4. Qutunun **altındakı** izah/kömək mətnini oxu
+
+**Gözlənilən nəticə:** Placeholder «Agentin sualına cavab verin…»-ə dəyişməli **və** kömək mətnində «agent dayandı, cavabınız qrafiki davam etdirir» kimi izah olmalıdır.
+**Faktiki nəticə:** Placeholder düzgün dəyişir — «**Agentin sualına cavab verin…**» ✅. Lakin **izah sətri yoxdur**.
+**Təsir:** İstifadəçi yalnız «Təsdiq et» / «Rədd et» düymələrini görür; qutuya `approve` yaza biləcəyini və ya sərbəst cavab verə biləcəyini bilmir. Funksiya işləyir, amma kəşf edilə bilmir.
+**İstinad:** QA plan APPR-04 (Söhbətdən birbaşa təsdiq), addım 2
+**Severity: Low · Prioritet: Low · Status: Open**
+
+---
+
+## L-12 — Qoşulu bağlayıcıda «Hesab» sahəsi boşdur; tenant PATCH naməlum sahələri səssizcə udur
+
+**Komponent:** web / registry (bağlayıcı detalı) + backend / super-admin (tenants)
+**Mühit:** https://orgsysai.com/chat/registry?section=connectors · REST API · az dili
+**Rol/Hesab:** tenant admin · super admin
+
+**Təkrarlama addımları (A — «Hesab» sahəsi):**
+
+1. Qoşulu OAuth bağlayıcısının (Gmail) detal səhifəsini aç
+2. «Bağlantı məlumatı» panelindəki dörd sahəni yaz
+
+**Təkrarlama addımları (B — səssiz udulma):**
+
+3. `PATCH /api/super-admin/tenants/{id} {"zzz_invalid":1}` göndər
+4. HTTP kodunu və cavabı yaz
+
+**Gözlənilən nəticə:** (A) «Hesab» sahəsində qoşulmuş hesabın identifikatoru görünməlidir. (B) Naməlum sahə `422 extra_forbidden` ilə rədd edilməlidir (digər uclarda belədir).
+**Faktiki nəticə:** (A) Qoşulu Gmail-də belə **«Hesab» = `—` (boş)**; qalan üç sahə düzgündür («Vəziyyət: Aktiv», «Son istifadə: 25 dəq əvvəl», «Nəqliyyat: mcp_http · OAuth 2.0»). (B) **200** qaytarılır və obyekt dəyişiksiz verilir — **naməlum sahə səssizcə udulur** (nə xəta, nə xəbərdarlıq).
+**Təsir:** (A) Hansı Google hesabının qoşulduğu görünmür — çoxhesablı istifadəçi və dəstək üçün problem; audit izi natamamdır. (B) İnteqrasiya yazan tərəf göndərdiyi sahənin saxlandığını düşünə bilər (M-8-dəki eyni nümunə).
+**İstinad:** QA plan REG-07 (addım 8 — «Bağlantı məlumatı» paneli) · SUSP-02
+**Severity: Low · Prioritet: Low · Status: Open**
+
+---
+---
+
+# Bilinən problemlərin canlı təsdiqi (yeni qüsur kimi açılmır, amma izlənməlidir)
+
+| # | Ad | Canlı ölçmə | Test |
+|---|---|---|---|
+| K-1 | **Planlayıcı saat qurşağı almır** | Cədvəl modelində `timezone` sahəsi **ümumiyyətlə yoxdur**; `cron "0 9 * * *"` server (UTC) vaxtı ilə işləyir → Bakı üçün **+4 saat** fərq | SCHED-02 |
+| K-2 | **İllik paket alına bilmir** | `cadence:"yearly"` checkout **aylıq məbləği** qaytarır (pro illik = 79.96 = aylıqla eyni) | PLAN-07 |
+| K-3 | **Kart saxlanmır** | Uğurlu 19.99 ₼ ödənişdən **sonra** da `GET /api/payments/card` → `configured:false` (`payriff.card_save=false`) → CARD-02…06 və WALLET-05/06 aparıla bilmir | CARD-01 |
+| K-4 | **`<html lang>` tətbiqdə sabit `"en"`** | Landing `lang="az"` (düzgün), tətbiq isə **`az`/`en`/`ru` üçün də `lang="en"`** — ekran oxuyucuları və dil-asılı CSS üçün əlçatanlıq qüsuru | I18N-02 |
+| K-5 | **STT/TTS qiymətləri ekranda yoxdur** | `spend.by_source` səsin real xərc yaratdığını göstərir (`voice_stt 0.0379 ₼`, `voice_tts 1.9249 ₼`), lakin `/super-admin/ai-prices` siyahısında STT/TTS sətri və qiymət parametri **yoxdur** — dəyərlər koddakı sabitlərdir | SPAY-05 |
+
+**Severity: hamısı Low–Medium · Status: Known / Confirmed**

@@ -114,6 +114,21 @@ Parol qapısı (`bercberc`) və giriş işlədi. Bütün yoxlanılan ekranlarda 
 - **Mobil 390px (REG-18 · APPR-12 · SCHED-10 · PROF-08 · RESP-01) PASS:** heç bir ekranda üfüqi sürüşmə yoxdur; cədvəl yaratma modalı ekrana sığır, “Yarat” düyməsi görünür.
 - **Tünd tema (PROF-06 · RESP-03) PASS:** fon qaranlıq, mətn oxunur, **forma qutuları fondan fərqlənir** (əvvəlki reqressiya təkrarlanmır); açarlar və “Yadda saxla” görünür.
 
+## 3.6 REG bölməsinin tam icrası (full-access pass — admin + super admin)
+
+Sahibdən tam icazə alındıqdan sonra REG brauzerlə genişləndirildi. **Yekun: 10 PASS + 1 fərq + 5 qismən + 2 xarici-bloklu.**
+
+- **REG-04 ✅** fayl yükləmə: `test.pdf` qəbul · `qadagan.exe` rədd («Unsupported file type '.exe'») · 25 MB+ rədd («Maksimum ölçü: 25 MB»).
+- **REG-06 ✅** admin 3 sekme (Mağaza/Mənim əlavələrim/Qoşulanlar) + kateqoriya süzgəcləri + loqolu kartlar (Gmail qoşulu ✓) + boş axtarış mesajı.
+- **REG-13 ✅** komanda modalı (Bacarıq seçimi + ad + arqumentlər).
+- **REG-15 ✅ + YENİ TAPINTI:** sahiblik keçidi **asimmetrikdir** — **«Təşkilata yüksəlt» (promote) təsdiq SORUŞMUR** (sənəddəki UX riski təsdiqləndi), amma **«Sahiblik statusuna endir» (demote) TƏSDİQ soruşur** («…şəxsi edilsin? Bu əməl geri qaytarılmır»). Sənəd «ikisi də soruşmur» deyirdi → demote yaxşılaşıb.
+- **REG-16 ✅** super admin: **«Bütün təşkilatlara aç»** (tenant admindəki «Təşkilata yüksəlt» ilə qarışmır — rol etiketləri düzgün); platforma yüksəltmə/endirmə işləyir.
+- **REG-03/17 🟡** offline: təhlükəli boş-forma / səssiz-boş siyahı **müşahidə olunmadı** (yaxşı), amma açıq xəta/qoruma mesajı avtomatlaşdırma ilə təsdiqlənmədi — manual lazımdır.
+- **REG-08/10 🟡** token qoşma dialoqu / 1C formu skriptlə etibarlı açıla bilmədi → token maskalanması (🔴) manual yoxlanmalıdır.
+- **REG-07/11/12 ❌** real xarici xidmət tələb edir (OAuth girişi; qoşulu xidmətin ayrılması; alətli qoşulu xidmət). Sahibin canlı Gmail qoşulması pozulmasın deyə toxunulmadı.
+
+> ⚠️ **Təhlükəsizlik qeydi:** REG-16 təmizləməsində sahibin real platforma bacarığı «explain» (9 təşkilat / 14 nəfər istifadə edir) səhvən hədəflənə bilərdi; təsdiqdən əvvəl dialoq başlığı yoxlanıb dayandırıldı — **toxunulmadı**. Yalnız `qa-*` test obyektləri dəyişdirildi və hamısı silindi.
+
 ## 4. İcra edilə bilməyən testlər və səbəbi
 
 **A. Canlı sistemdə qadağan olanlar (§0.4):** SUSP-01…05 (hamısı `period_end`/`suspension_floor_date` baza yazması tələb edir) · OFFER-01/02 (boş filtrli təklif = bütün platformaya endirim) · PAY-03/07/08 · CARD-05 · OFFER-06 · SPAY-03. **Səbəb:** canlı bazaya yazma / real ödənişlərin sındırılması / 24 saat gözləmə.

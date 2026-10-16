@@ -94,3 +94,17 @@
 ## Additional findings (Low)
 - L-5 (format, PLAN-09/LAND-01): decimal separator is a DOT across landing + app ("19.99 ₼", "34.00 ₼", "231.39 ₼"), but handoff §0.2 specifies COMMA for AZN ("19,99 ₼"). Consistent i18n/format deviation. Low.
 - L-6 (profile, PROF-01): profile text fields (e.g. position) CANNOT be cleared via PATCH /auth/me — empty string, null, and whitespace are all treated as no-op (old value preserved), and the PATCH response value is inconsistent with the stored value. Low.
+
+## REG — browser completion pass (full-access, admin + super admin)
+- REG-04 ✅ UI: skill asset upload — hint "25 MB / Supported types" shown; test.pdf ACCEPTED; qadagan.exe REJECTED ("Unsupported file type '.exe'. Supported: CSV, DOCX, ..."); 25MB+ file REJECTED ("Maksimum ölçü: 25 MB"). (file-type msg is English — minor L-1 localization.)
+- REG-06 ✅ UI: admin sees 3 tabs (Mağaza / Mənim əlavələrim / Qoşulanlar) + category filters (Hamısı/Təşkilat/Şəxsi) + connector cards with logos (Gmail=connected green ✓, Google Təqvim, Notion, Airtable, Atlassian, Attio, Cal.com, Calendly, Close, Fireflies, Granola...); search nonsense -> "uyğun bağlayıcı yoxdur". Logos load (no broken images).
+- REG-13 ✅ UI: "Yeni komanda" modal has Bacarıq (skill) select + Komandanın adı + arqumentlər fields.
+- REG-15 ✅ UI (ownership promote/demote) + NEW FINDING: transitions WORK. ASYMMETRIC confirmation — PROMOTE ("Təşkilata yüksəlt") executes with NO confirm dialog (confirms documented UX risk, still present); DEMOTE ("Sahiblik statusuna endir") DOES show a confirm dialog ("«name» şəxsi edilsin? ... Bu əməl geri qaytarılmır"). Handoff said BOTH lack confirm -> demote now improved.
+- REG-16 ✅ UI (super admin): shows "Bütün təşkilatlara aç" (NOT "Təşkilata yüksəlt" — role labels correct, don't mix); platform-promote works (dialog shows affected orgs/people + "Bu əməl geri qaytarılmır"); demote-from-platform ("Admində saxla") also confirms. Verified dialog targets correct skill (safety).
+- REG-03 🟡 offline edit: no empty-editable-form data-loss risk observed (safe), but explicit guard message not confirmed via automation — needs manual.
+- REG-17 🟡 offline load: page not silently empty (good — the 🔴 failure sign absent), but explicit "Yenidən cəhd et" error card not confirmed — needs manual.
+- REG-08 🟡 token connect dialog not reachable via scripted clicks — token-field masking (🔴) NOT verified; needs manual.
+- REG-10 🟡 1C connect form not reachable via scripted clicks — needs manual.
+- REG-07/11/12 ❌ require real external service: OAuth login (REG-07), a connected store service to disconnect (REG-11; owner's Gmail is connected but must not be disconnected), connected service with tools for approval levels (REG-12; won't modify owner's live Gmail config).
+### REG final tally: 10 PASS (01,02,04,05,06,13,14,15,16,18) + 1 deviation (09) + 5 partial/needs-manual (03,08,10,12,17) + 2 external-blocked (07,11).
+### SAFETY NOTE: during REG-16 cleanup, the owner's real platform skill "explain" (used by 9 orgs/14 people) was almost targeted by a demote; caught by verifying the dialog title before confirming — NOT touched. Only qa-* test skills were modified and all deleted.

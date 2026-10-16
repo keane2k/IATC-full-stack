@@ -553,3 +553,36 @@ Qalan 3 qismən: **REG-07** (CAPTCHA) · **OFFER-01** (qəsdən buraxılmış ad
 - Üzvə müvəqqəti verilmiş «agent!» təyinatı **geri alındı** (əvvəlki vəziyyətinə qaytarıldı).
 - QA tenant `a8155f37…` **`active`** vəziyyətinə qaytarıldı.
 - Sahibin «agent!» işçisinə **heç bir dəyişiklik getmədi** (səhvən açılan redaktə forması yazma göndərmədən bağlandı — yoxlanıldı).
+
+## ═══ RETRY PASS #6 — son 3 qismən test ═══
+
+### REG-07 — 8 addımdan 6-sı icra olundu, **bütün 🔴 yoxlamalar keçdi**
+Google Təqvim (mcp_http · OAuth 2.0, qoşulmamış) bağlayıcısı üzərində:
+- **Addım 8 ✅** «Bağlantı məlumatı» paneli dörd sahəni tam göstərir: **Hesab / Vəziyyət / Son istifadə / Nəqliyyat** (`—` · «Qoşulmayıb» · «Heç vaxt» · «mcp_http · OAuth 2.0»).
+- **Addım 1-2 ✅** «Qoşul» → popup **`accounts.google.com/v3/signin/...`** açılır, azərbaycanca: «Google ilə daxil olun ¦ Giriş ¦ **orgsysai.com ilə davam edin**» + Məxfilik/Şərtlər linkləri.
+- **Addım 6 ✅ (hərfi-hərfinə)** popup bloklandıqda mesaj: «**Popup bloklanıb — bu sayt üçün popup-lara icazə verin və yenidən cəhd edin**» — gözlənilən mətnlə **eynidir**.
+- **Addım 7 ✅ (🔴 yoxlaması)** popup icazə vermədən bağlandı → ana səhifə **«Qoşulur…» vəziyyətində İLİŞMİR**, vəziyyət **«Qoşulmayıb»** olaraq qalır. Sənəddəki 🔴 uğursuzluq əlaməti («popup bağlananda səhifə əbədi gözləyir») **yoxdur**.
+- **Addım 5-in nəticəsi ✅** artıq qoşulu olan Gmail üzərində yoxlandı: «Qoşulanlar» siyahısında görünür; detal paneli **Vəziyyət «Aktiv»**, **Son istifadə «25 dəq əvvəl»**, əməl düyməsi «Qoşul» yox **«Ayır»**-dır.
+- **Addım 3-4 ❌** Google girişi tamamlana bilmir: real hesabla (istifadəçinin verdiyi) e-poçt daxil edildikdən sonra **CAPTCHA** çıxır — «**Eşitdiyiniz və ya gördüyünüz mətni daxil edin**». İkinci dəfə təsdiqləndi; avtomatlaşdırma ilə həlledilməzdir. (Parol heç bir fayla/loqa yazılmadı, yalnız mühit dəyişəni ilə ötürüldü.)
+- ⚠️ **L-13 (Low):** qoşulu Gmail-də belə **«Hesab» sahəsi boşdur (`—`)** — hansı Google hesabının qoşulduğu göstərilmir. Test «Hesab» sahəsinin dolu olmasını gözləyir; dəstək/audit üçün faydalı olardı.
+
+### OFFER-01 ✅ TAM KEÇDİ — addım 7-8 daxil (maksimum məhdudlaşdırılmış şəkildə)
+Əvvəlki passda bu addımları təhlükəsizlik üçün buraxmışdım. İndi **riski praktiki olaraq sıfıra endirən** quruluşla icra etdim:
+- Boş filtrli (platforma üzrə) təklif yaradıldı: hədəf **`topup`**, endirim **cəmi 1 %**, **`max_redemptions: 1`**, **`ends_at` = +3 dəqiqə** (özü bağlanan pəncərə). Maksimum mümkün itki: bir topup-ın 1 %-i ≈ **0.10 ₼**.
+- `reach` = `{"audience":"everyone","tenant_id":null,"plan_codes":[],"unrestricted":true}` ✅
+- **Addım 7-8 ✅:** **başqa təşkilatın** (mənim QA tenant-ım, öz təklifi olmayan) `GET /billing/offers` cavabında banner **göründü**, və kassa endirimi **kupon kodu olmadan özü tətbiq etdi**: `10 ₼ topup → charged **9.90** / credited 10.00`, `offer_id` əlavə olundu ✅
+- **Dərhal söndürüldü** (pəncərə bitməsini gözləmədən, ümumi müddət ~70 saniyə). Yoxlandı: başqa təşkilat artıq **heç bir təklif görmür** (`[]`), yeni checkout **tam qiymət** alır (`charged 10, offer_id ""`).
+- Platformada **aktiv qalan yeganə təklif sahibin öz «salam» təklifidir** — mənim yaratdıqlarımın hamısı `off`-dur.
+
+### SUSP-02 — `unpaid` ssenarisi hər üç yolla sınandı, **əlçatmazdır** (qismən qalır)
+1. `PATCH /super-admin/tenants/{id} {"suspended_reason":"unpaid"}` → tenant dayandırılır, amma səbəb **həmişə `manual`** yazılır (aktiv vəziyyətdən təmiz keçidlə 2 dəfə yoxlandı).
+2. Ödəniş süpürgəsini əl ilə işə salmaq üçün uc yoxdur: `/super-admin/billing/sweep|run-sweep|reconcile`, `/super-admin/jobs`, `/admin/billing/sweep` → hamısı **404**.
+3. `current_period_end` super-admin API-si ilə nə oxunur, nə yazılır (əvvəlki passda sübut olundu).
+→ `unpaid` səbəbi **yalnız sistemin öz abunə-bitmə axını** ilə qoyula bilər; süni yaradılması DB girişi tələb edir. **Manual ssenarisi (addım 7) isə tam icra olunub → M-6.**
+- ⚠️ Əlavə müşahidə (M-8 ilə eyni nümunə): `PATCH /super-admin/tenants/{id} {"zzz_invalid":1}` → **200** qaytarır və obyekti dəyişiksiz verir, yəni **naməlum sahələr səssizcə udulur** (nə `extra_forbidden`, nə xəbərdarlıq). Bu, API istehlakçısını yanılda bilər.
+
+### YENİLƏNMİŞ YEKUN SAYIM
+**110 tam (83 %) · 2 qismən (2 %) · 20 mümkün deyil (15 %)**
+Qalan 2 qismən:
+- **REG-07** — 8 addımdan 6-sı icra olundu, bütün 🔴 yoxlamalar keçdi; yalnız Google girişinin tamamlanması (addım 3-4) CAPTCHA səbəbi ilə mümkün deyil.
+- **SUSP-02** — `manual` ssenarisi tam icra olundu (M-6); `unpaid` ssenarisi üç yolla sınandı və əlçatmazdır.

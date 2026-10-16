@@ -18,12 +18,12 @@
 
 | Göstərici | Say |
 |---|---:|
-| **Voice-dən sonrakı test əhatəsi (132 ID)** | **109 tam (83 %) · 3 qismən (2 %) · 20 mümkün deyil (15 %)** — dəqiq siyahı §3.11/§3.13-dədir |
+| **Voice-dən sonrakı test əhatəsi (132 ID)** | **110 tam (83 %) · 2 qismən (2 %) · 20 mümkün deyil (15 %)** — dəqiq siyahı §3.11/§3.13/§3.14-dədir |
 | Brauzer UI testi (desktop 1905px + mobil 390px + tünd tema) | **15+ ekran/axın** — hamısı §0.4 məcburi yoxlamalarından keçdi |
 | **Yeni Kritik qüsur** | **0** |
 | **Yeni Yüksək qüsur** | **1** (H-1 — limitli təklifin limitdən çox istifadəsi) |
 | Orta səviyyəli qeyd (sənədlə uyğunsuzluq / zəiflik) | 10 (M-1…M-10) |
-| Aşağı səviyyəli qeyd | 11 (L-1…L-11) |
+| Aşağı səviyyəli qeyd | 12 (L-1…L-12) |
 | Bilinən problemlərin canlı təsdiqi (yeni deyil) | 8 (TZ · illik paket · kart saxlama · zəif parol serveri · OFFER-02 təsdiqsiz redaktə · PAY-05 banner qolları · SUSP-02 əl ilə dayandırma · SPAY-05 STT/TTS bölməsinin yoxluğu) |
 | Düzəldiyi aşkarlanan köhnə problem | 2 (OFFER-04 «Müddət» sütunu kəsilməsi · WALLET-08 xəbərdarlığın heç vaxt çıxmaması) |
 | İcra edilə bilməyən (səbəbi ilə, §4) | ~25 UI/mobil + 11 canlıda qadağan (§0.4) |
@@ -143,6 +143,7 @@
 - **L-5 (format, PLAN-09/LAND-01):** həm landing-də, həm tətbiqdə onluq ayırıcı **nöqtədir** (`19.99 ₼`, `34.00 ₼`, `231.39 ₼`), amma sənəd §0.2 AZN üçün **vergül** gözləyir (`19,99 ₼`). Ardıcıl i18n/format uyğunsuzluğu.
 - **L-7 (wallet API, WALLET-05):** `PUT /billing/wallet/auto-topup` saxlanmış kart yoxdursa `409` qaytarır, amma cavabın `message` sahəsi insan cümləsi deyil, **kodun özüdür** (`"message":"no_saved_card"`). UI öz mətnini göstərdiyi üçün istifadəçiyə təsiri yoxdur.
 - **L-8 (ödəniş uzlaşdırması, SPAY-02/WSHOP-05):** `/super-admin/payments`-də plan və topup sətirləri `masked_pan`/`card_brand` saxlayır (`400000******2078`, `VISA`), **işçi (`kind=worker`) sətri isə boş** (həmçinin `period_start/period_end` boş). Eyni ekranda bu sütunlar olduğundan dəstək işçi ödənişini karta bağlaya bilmir.
+- **L-12 (REG-07):** qoşulu OAuth bağlayıcısında belə «Bağlantı məlumatı» panelinin **«Hesab» sahəsi boşdur (`—`)** — hansı hesabın qoşulduğu görünmür (dəstək/audit üçün vacibdir). Həmçinin `PATCH /super-admin/tenants/{id}` naməlum sahələri **səssizcə udur** (200 qaytarır) — M-8-dəki eyni nümunə.
 - **L-11 (APPR-04):** təsdiq gözlənilən zaman placeholder düzgün dəyişir, lakin «agent dayandı, cavabınız qrafiki davam etdirir» izah sətri yoxdur — istifadəçi çatdan `approve` yaza biləcəyini bilmir.
 - **L-10 (PAY-13):** ödəniş tarixçəsində «Alınmadı» nişanının yanında şlüzün **xam kodu `DECLINED`** müştəriyə olduğu kimi göstərilir — insan cümləsinə çevrilməlidir.
 - **L-9 (PLAN-04):** `sales_contact_email` ayarı boş olduğu üçün «Satışla əlaqə» düyməsi `mailto:` yox, sadəcə `https://orgsysai.com`-u açır — fallback düzgün işləyir, amma enterprise müştərisi üçün faktiki əlaqə yolu yoxdur.
@@ -338,11 +339,11 @@ Bizim UI mətnlərimiz **azərbaycanca və rəqəmlidir** («**Ən azı 10.00 �
 ### Yekun əhatə — dürüst sayım (132 test)
 | Kateqoriya | Say | Pay |
 |---|---:|---:|
-| **Tam icra olundu, sübutlu** | **109** | 83 % |
-| **Qismən** | **3** | 2 % |
+| **Tam icra olundu, sübutlu** | **110** | 83 % |
+| **Qismən** | **2** | 2 % |
 | **Ümumiyyətlə icra oluna bilmədi** | **20** | 15 % |
 
-**Qalan 3 qismən:** **REG-07** (Google OAuth popup-unda CAPTCHA; tətbiq tərəfi təsdiqlənib) · **OFFER-01** (addım 7-8 **qəsdən** edilmədi — 24 real təşkilata endirim düşərdi; ekvivalent sübut §3.11-dədir) · **SUSP-02** (`unpaid` səbəbi süni yaradıla bilmir — §3.13).
+**Qalan 2 qismən:** **REG-07** (8 addımdan 6-sı icra olundu, **bütün 🔴 yoxlamalar keçdi**; yalnız Google girişinin tamamlanması CAPTCHA-ya görə mümkün deyil) · **SUSP-02** (`manual` ssenarisi tam icra olundu → M-6; `unpaid` ssenarisi üç yolla sınandı və əlçatmazdır) — §3.14.
 
 **İcra oluna bilməyən 19 — hamısı mühit/konfiqurasiya səbəbidir, məhsul qüsuru deyil:**
 
@@ -412,6 +413,30 @@ Vəd edilən bir-kliklik axın **üç haldan birində** işləyir. Addım 4-7 (Q
 
 ### Təmizlik (pass #5)
 «QA Tier Test» işçisi **silindi** · üzvə müvəqqəti verilmiş «agent!» təyinatı **geri alındı** · QA tenant **`active`**-ə qaytarıldı · sahibin «agent!» işçisinə **heç bir dəyişiklik getmədi** (səhvən açılan redaktə forması yazma göndərmədən bağlandı, yoxlanıldı).
+
+
+## 3.14 Son 3 qismən testin tamamlanması (pass #6)
+
+### OFFER-01 ✅ tam keçdi — addım 7-8 daxil
+Əvvəlki passda bu iki addımı təhlükəsizlik üçün buraxmışdım. İndi **riski praktiki olaraq sıfıra endirən** quruluşla icra etdim: boş filtrli (platforma üzrə) təklif — hədəf `topup`, endirim **cəmi 1 %**, **`max_redemptions: 1`**, **`ends_at` = +3 dəqiqə** (özü bağlanan pəncərə). Maksimum mümkün itki ≈ **0.10 ₼**.
+- `reach` = `{"audience":"everyone","unrestricted":true}` ✅
+- **Başqa təşkilatın** (öz təklifi olmayan QA tenant) cavabında **banner göründü** ✅
+- Kassa endirimi **kupon kodu olmadan özü tətbiq etdi**: `10 ₼ topup → charged **9.90** / credited 10.00`, `offer_id` əlavə olundu ✅
+- **~70 saniyə sonra dərhal söndürüldü.** Yoxlandı: başqa təşkilat artıq heç nə görmür (`[]`), yeni checkout **tam qiymət** alır. Platformada aktiv qalan yeganə təklif **sahibin öz «salam» təklifidir**.
+
+### REG-07 — 8 addımdan 6-sı icra olundu, bütün 🔴 yoxlamalar keçdi
+- **Addım 8 ✅** «Bağlantı məlumatı»: **Hesab / Vəziyyət / Son istifadə / Nəqliyyat** (`—` · Qoşulmayıb · Heç vaxt · mcp_http · OAuth 2.0)
+- **Addım 1-2 ✅** popup `accounts.google.com` açılır, azərbaycanca «Google ilə daxil olun … **orgsysai.com ilə davam edin**» + Məxfilik/Şərtlər
+- **Addım 6 ✅ hərfi-hərfinə** popup bloklandıqda: «**Popup bloklanıb — bu sayt üçün popup-lara icazə verin və yenidən cəhd edin**»
+- **Addım 7 ✅ (🔴)** popup icazə vermədən bağlandı → səhifə **ilişmir**, vəziyyət «Qoşulmayıb» qalır → sənəddəki 🔴 əlamət **yoxdur**
+- **Addım 5-in nəticəsi ✅** qoşulu Gmail: «Qoşulanlar»da görünür, Vəziyyət «**Aktiv**», Son istifadə «25 dəq əvvəl», düymə «**Ayır**»
+- **Addım 3-4 ❌** Google girişi: real hesabla e-poçt daxil edildikdən sonra **CAPTCHA** («Eşitdiyiniz və ya gördüyünüz mətni daxil edin») — ikinci dəfə təsdiqləndi, avtomatlaşdırma ilə həlledilməz. (Parol heç bir fayla/loqa yazılmadı.)
+
+### SUSP-02 — `unpaid` ssenarisi üç yolla sınandı, əlçatmazdır
+1. `PATCH {"suspended_reason":"unpaid"}` → səbəb **həmişə `manual`** yazılır (2 dəfə təmiz keçidlə yoxlandı)
+2. Süpürgəni əl ilə işə salmaq üçün uc yoxdur (`/billing/sweep`, `/run-sweep`, `/reconcile`, `/jobs` → **404**)
+3. `current_period_end` super-admin API-si ilə nə oxunur, nə yazılır
+→ `unpaid` yalnız sistemin öz abunə-bitmə axını ilə qoyulur; süni yaradılması DB girişi tələb edir. **Manual ssenarisi (addım 7) tam icra olunub → M-6.**
 
 ## 4. İcra edilə bilməyən testlər və səbəbi
 

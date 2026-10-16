@@ -18,12 +18,12 @@
 
 | Göstərici | Say |
 |---|---:|
-| **Voice-dən sonrakı test əhatəsi (132 ID)** | **101 tam (77 %) · 12 qismən (9 %) · 19 mümkün deyil (14 %)** — dəqiq siyahı §3.11-dədir |
+| **Voice-dən sonrakı test əhatəsi (132 ID)** | **104 tam (79 %) · 8 qismən (6 %) · 20 mümkün deyil (15 %)** — dəqiq siyahı §3.11-dədir |
 | Brauzer UI testi (desktop 1905px + mobil 390px + tünd tema) | **15+ ekran/axın** — hamısı §0.4 məcburi yoxlamalarından keçdi |
 | **Yeni Kritik qüsur** | **0** |
 | **Yeni Yüksək qüsur** | **1** (H-1 — limitli təklifin limitdən çox istifadəsi) |
 | Orta səviyyəli qeyd (sənədlə uyğunsuzluq / zəiflik) | 6 (M-1…M-6) |
-| Aşağı səviyyəli qeyd | 10 (L-1…L-10) |
+| Aşağı səviyyəli qeyd | 11 (L-1…L-11) |
 | Bilinən problemlərin canlı təsdiqi (yeni deyil) | 8 (TZ · illik paket · kart saxlama · zəif parol serveri · OFFER-02 təsdiqsiz redaktə · PAY-05 banner qolları · SUSP-02 əl ilə dayandırma · SPAY-05 STT/TTS bölməsinin yoxluğu) |
 | Düzəldiyi aşkarlanan köhnə problem | 2 (OFFER-04 «Müddət» sütunu kəsilməsi · WALLET-08 xəbərdarlığın heç vaxt çıxmaması) |
 | İcra edilə bilməyən (səbəbi ilə, §4) | ~25 UI/mobil + 11 canlıda qadağan (§0.4) |
@@ -143,6 +143,7 @@
 - **L-5 (format, PLAN-09/LAND-01):** həm landing-də, həm tətbiqdə onluq ayırıcı **nöqtədir** (`19.99 ₼`, `34.00 ₼`, `231.39 ₼`), amma sənəd §0.2 AZN üçün **vergül** gözləyir (`19,99 ₼`). Ardıcıl i18n/format uyğunsuzluğu.
 - **L-7 (wallet API, WALLET-05):** `PUT /billing/wallet/auto-topup` saxlanmış kart yoxdursa `409` qaytarır, amma cavabın `message` sahəsi insan cümləsi deyil, **kodun özüdür** (`"message":"no_saved_card"`). UI öz mətnini göstərdiyi üçün istifadəçiyə təsiri yoxdur.
 - **L-8 (ödəniş uzlaşdırması, SPAY-02/WSHOP-05):** `/super-admin/payments`-də plan və topup sətirləri `masked_pan`/`card_brand` saxlayır (`400000******2078`, `VISA`), **işçi (`kind=worker`) sətri isə boş** (həmçinin `period_start/period_end` boş). Eyni ekranda bu sütunlar olduğundan dəstək işçi ödənişini karta bağlaya bilmir.
+- **L-11 (APPR-04):** təsdiq gözlənilən zaman placeholder düzgün dəyişir, lakin «agent dayandı, cavabınız qrafiki davam etdirir» izah sətri yoxdur — istifadəçi çatdan `approve` yaza biləcəyini bilmir.
 - **L-10 (PAY-13):** ödəniş tarixçəsində «Alınmadı» nişanının yanında şlüzün **xam kodu `DECLINED`** müştəriyə olduğu kimi göstərilir — insan cümləsinə çevrilməlidir.
 - **L-9 (PLAN-04):** `sales_contact_email` ayarı boş olduğu üçün «Satışla əlaqə» düyməsi `mailto:` yox, sadəcə `https://orgsysai.com`-u açır — fallback düzgün işləyir, amma enterprise müştərisi üçün faktiki əlaqə yolu yoxdur.
 - **L-6 (profil, PROF-01):** profil mətn sahələri (məs. “Vəzifə”) `PATCH /auth/me` ilə **təmizlənə bilmir** — boş sətir, `null` və boşluq hamısı köhnə dəyəri saxlayır (dəyişiklik baş vermir), həm də cavabdakı dəyər saxlanan dəyərlə ziddiyyətlidir.
@@ -337,11 +338,11 @@ Bizim UI mətnlərimiz **azərbaycanca və rəqəmlidir** («**Ən azı 10.00 �
 ### Yekun əhatə — dürüst sayım (132 test)
 | Kateqoriya | Say | Pay |
 |---|---:|---:|
-| **Tam icra olundu, sübutlu** | **101** | 77 % |
-| **Qismən** (əsas/təhlükəli hissə yoxlanılıb, bir addım qalıb) | **12** | 9 % |
-| **Ümumiyyətlə icra oluna bilmədi** | **19** | 14 % |
+| **Tam icra olundu, sübutlu** | **104** | 79 % |
+| **Qismən** (əsas/təhlükəli hissə yoxlanılıb, bir addım qalıb) | **8** | 6 % |
+| **Ümumiyyətlə icra oluna bilmədi** | **20** | 15 % |
 
-**Qismən icra olunan 12:** REG-03 (offline toast) · REG-07 + WORKER-05/06 (Google CAPTCHA) · REG-08 (mağazada bearer bağlayıcı yoxdur) · REG-10 (1C formu açılmır) · APPR-04 (per-tool öz-təsdiq konfiqı) · WSHOP-02 (tier-li işçi yoxdur) · OFFER-01 (addım 7-8 **qəsdən** edilmədi — 24 təşkilata endirim düşərdi) · SUSP-02 (manual ssenarisi ✅, unpaid ssenarisi DB tələb edir) · PAY-08 (19 `expired` sətirlə dolayı sübut, TTL dəqiq ölçülmədi) · RESP-01 (5 enidən 3-ü ölçüldü, heç birində problem yoxdur).
+**Qismən icra olunan 8:** REG-07 + WORKER-05/06 (Google CAPTCHA) · WSHOP-02 (tier-li işçi yoxdur) · OFFER-01 (addım 7-8 **qəsdən** edilmədi — 24 təşkilata endirim düşərdi) · SUSP-02 (manual ssenarisi ✅, unpaid ssenarisi DB tələb edir) · PAY-08 (19 `expired` sətirlə dolayı sübut, TTL dəqiq ölçülmədi) · RESP-01 (5 enidən 3-ü ölçüldü, heç birində problem yoxdur).
 
 **İcra oluna bilməyən 19 — hamısı mühit/konfiqurasiya səbəbidir, məhsul qüsuru deyil:**
 
@@ -352,6 +353,36 @@ Bizim UI mətnlərimiz **azərbaycanca və rəqəmlidir** («**Ən azı 10.00 �
 | Paylaşılan produksiya konfiqini dəyişmək lazımdır (bütün müştərilərə təsir edərdi) | PAY-12 · WSHOP-07 (`payriff.enabled`) · SPAY-03 (`payriff.mode`) · SPAY-04 (canlı qiymət) | 4 |
 | Backend sirri / infrastruktur girişi lazımdır | PAY-06 (callback secret) · PAY-07 (bildirişi kəsmək) | 2 |
 | Xarici xidmət qoşulması lazımdır | REG-11 (sahibin canlı Gmail-ini ayırmaq olmaz) | 1 |
+| **Test obyekti bu quraşdırmada yoxdur** | REG-10 — 1C bağlayıcısı kataloqda ümumiyyətlə yoxdur (25 bağlayıcı, `auth_kind` dəyərləri yalnız `bearer`/`mcp_oauth2`/`none`; `env_config` yoxdur) | 1 |
+
+
+## 3.12 «Manual» sayılan 4 testin icrası (pass #4) — 3 keçdi, 1 obyekti yoxdur
+
+### REG-03 ✅ tam keçdi — 🔴 data-itirmə yolu bağlıdır
+Registry yükləndikdən sonra `/api/registry/**` sorğuları abort edilib «Bacarığı redaktə et» basıldı:
+- **Forma açılmır.** Xəta kartı: «Bu bacarıq yüklənmədi: Failed to fetch» + «Yenidən cəhd et».
+- İzah **hərfi-hərfinə sənəddəki kimidir**: «**Forma qəsdən açılmır — boş formanı saxlamaq bacarığın təsvirini, parametrlərini və mətnini silərdi.**» ✅
+- Əsas sahədə **nə redaktə sahəsi, nə «Yadda saxla» düyməsi var** → 🔴 ssenari (boş forma → saxla → bacarıq silinir) **mümkün deyil** ✅
+- Şəbəkə qaytarıldıqda forma **dolu** açılır (ad, 47 simvol təsvir, **1737 simvol** mətn) ✅
+
+### REG-08 ✅ tam keçdi — maskalı token sahəsi
+Əvvəlki passın «mağazada bearer bağlayıcı yoxdur» qənaəti **səhv idi**: mağazada eyni adla iki «Notion» var — biri `mcp_http · OAuth 2.0`, digəri **`mcp_stdio · API tokeni`**. İkincisində «Qoşul» → «**Qoşul notion**» dialoqu:
+- «**API token / açar**» → **`<input type="password">`** → **maskalanır** ✅ (sahəyə dəyər yazıldı, `type=password` qaldı)
+- «Hesab etiketi (istəyə bağlı)» → `type=text` (düzgün — sirr deyil)
+- Submit **edilmədi**, bütün yazma sorğuları bloklanmışdı → canlıda heç nə dəyişmədi.
+
+### APPR-04 ✅ tam keçdi — söhbətdən birbaşa təsdiq (6 addımın hamısı)
+Gmail-in bəzi yazma alətləri **default olaraq «Təsdiq tələb edir»**-dir, ona görə heç bir konfiqurasiya dəyişdirilmədi.
+1. Çatda etiket yaratma sorğusu → kart: «Agent gmail bağlayıcısında **create_label** alətini icra etmək istəyir» + parametr JSON-u ✅
+2. Placeholder **«Agentin sualına cavab verin…»**-ə dəyişdi ✅ (⚠️ lakin «agent dayandı…» izah sətri yoxdur → **L-11**)
+3-4. Qutuya **`approve`** yazıldı → söz tanındı, **agent davam etdi**: «Gmail-də QA-TEST-SILIN etiketi yaradıldı» ✅, kart kilidləndi
+5. İkinci sorğuda çatdakı «**Rədd et**» → səbəb → «**Rəddi təsdiqlə**» → «Əməl rədd edildi — agentə nəyi dəyişmək istədiyinizi deyin» ✅
+6. `/approvals`-da **hər iki qərar** göründü (approved 19:56:58 · rejected 19:57:43), gözləyən sayğac 7 → 6 ✅ → **iki mənbə uyğundur** 🔴 yoxdur
+
+### 🟢 Əlavə təhlükəsizlik təsdiqi
+İstifadəçini **öz-özünün təsdiqçisi** etmək cəhdi → **422 «A user cannot approve their own operations»**. Özünü-təsdiq həm konfiqurasiya, həm həll anında bağlıdır. Təsdiqçi təyin edilməyəndə istifadəçi öz alət sorğusunu çatdan həll edə bilir — dizayn ardıcıldır.
+
+> ⚠️ **Sahibin əl ilə silməli olduğu test artefaktı:** APPR-04-ün təsdiq addımında Gmail-də **`QA-TEST-SILIN`** adlı etiket real olaraq yaradıldı. Gmail bağlayıcısında etiket **silmək üçün alət yoxdur**, ona görə silə bilmədim. Zəhmət olmasa Gmail → Parametrlər → Bütün parametrlərə bax → Etiketlər bölməsindən silin. («QA-TEST-SILIN-2» yaradılmadı — rədd edildi.)
 
 ## 4. İcra edilə bilməyən testlər və səbəbi
 

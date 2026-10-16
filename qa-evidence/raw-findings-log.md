@@ -453,3 +453,46 @@ RESP: 02 03 04 (3)
 
 **YEKUN: 101 tam (77 %) · 12 qismən (9 %) · 19 mümkün deyil (14 %).**
 Qismən + mümkün deyil = 31. Bunların **19-u məhsul qüsuru deyil** — söndürülmüş funksiya, DB girişi, paylaşılan konfiq və ya xarici xidmət tələbidir. **12 qismən** testin isə hamısında **təhlükəli/kritik hissə yoxlanılıb**; qalan addımlar ya avtomatlaşdırma məhdudiyyəti (4 ədəd, hərəsi ~2 dəq manual), ya CAPTCHA (3), ya mühit məhdudiyyətidir (5).
+
+## ═══ RETRY PASS #4 — 4 "manual" testin icrası ═══
+### REG-03 ✅ TAM KEÇDİ (🔴 data-itirmə yolu bağlıdır)
+`/chat/registry` yükləndikdən sonra `**/api/registry/**` sorğuları abort edildi (offline simulyasiyası), sonra «Bacarığı redaktə et» basıldı:
+- **Forma AÇILMIR.** Əvəzinə xəta kartı çıxır: «Bu bacarıq yüklənmədi: Failed to fetch» + «Yenidən cəhd et» düyməsi.
+- Mesaj **hərfi-hərfinə sənəddəki kimidir**: «**Forma qəsdən açılmır — boş formanı saxlamaq bacarığın təsvirini, parametrlərini və mətnini silərdi.**» ✅
+- Əsas sahədə **heç bir redaktə sahəsi və «Yadda saxla» düyməsi yoxdur** → 🔴 uğursuzluq əlaməti (boş forma açılır və saxlayanda bacarıq silinir) **mümkün deyil** ✅
+- Şəbəkə qaytarıldıqda forma **dolu açılır**: ad «schedule» (8 simvol), təsvir 47 simvol, mətn **1737 simvol**, «Yadda saxla» düyməsi mövcud ✅
+- Təhlükəsizlik: bütün yazma sorğuları test müddətində bloklanmışdı; heç bir yazma cəhdi olmadı.
+
+### REG-08 ✅ TAM KEÇDİ (maskalı token sahəsi tapıldı)
+Əvvəlki passda «mağazada bearer bağlayıcı yoxdur» demişdim — **səhv idi**: `notion` bağlayıcısı `mcp_stdio · API tokeni`-dir (səhv olaraq OAuth-lu `notion_mcp` ilə qarışdırmışdım; mağazada eyni adla iki «Notion» var).
+- Bağlayıcı detalı → «Qoşul» → dialoq: «**Qoşul notion**»
+- Sahələr: «**API token / açar**» → **`<input type="password">`** → **maskalanır** ✅ · «Hesab etiketi (istəyə bağlı)» → `type=text` (düzgün — bu sirr deyil, etiketdir)
+- Sahəyə `secret-token-12345` yazıldı, sahə `type=password` olaraq qaldı → ekranda nöqtələrlə görünür ✅
+- Düymələr: «Ləğv et» / «Qoşul». **Submit edilmədi** və bütün yazma sorğuları bloklanmışdı — canlıda heç nə dəyişmədi.
+- Əlavə: həmin detal səhifəsi alət səviyyəsində icazələri də göstərir («Notion bazasında sorğu → Avtomatik icazə», «Notion səhifəsini dəyiş → **Təsdiq tələb edir**») — REG-12-ni təkrar təsdiqləyir.
+
+### APPR-04 ✅ TAM KEÇDİ (6 addımın hamısı)
+Gmail-in bəzi yazma alətləri **default olaraq «Təsdiq tələb edir»**-dir, ona görə heç bir konfiqurasiya dəyişdirilmədən test edildi.
+1. Çatda «Gmail-də "QA-TEST-SILIN" adlı yeni etiket yarat» → kart çıxdı: «**Agent gmail bağlayıcısında create_label alətini icra etmək istəyir**» + Bağlayıcı/Alət/parametr JSON-u ✅
+2. Giriş qutusunun placeholder-i **«Agentin sualına cavab verin…»**-ə dəyişdi ✅ (sənəddəki mətnlə eyni). ⚠️ «agent dayandı, cavabınız qrafiki davam etdirir» kömək mətni **tapılmadı** → **L-11**.
+3. Qutuya **`approve`** yazıldı və göndərildi → **söz tanındı** ✅
+4. **Agent davam etdi**: «Nəticə — Result from invoke_connector — **Gmail-də QA-TEST-SILIN etiketi yaradıldı.**» Kart kilidləndi, placeholder normala qayıtdı ✅
+5. İkinci sorğu («QA-TEST-SILIN-2») → çatdakı «**Rədd et**» düyməsi → səbəb yazıldı → «**Rəddi təsdiqlə**» (+ «Ləğv et») → çatda «**Əməl rədd edildi — agentə nəyi dəyişmək istədiyinizi deyin**» ✅
+6. `/approvals`-da hər iki qərar əks olundu: `create_label` **approved 19:56:58** və `create_label` **rejected 19:57:43**; gözləyən sayğac 7 → 6 ✅ → **iki mənbə uyğundur, 🔴 uyğunsuzluq yoxdur.**
+
+### 🟢 ƏLAVƏ TƏHLÜKƏSİZLİK TƏSDİQİ (APPR-05-i gücləndirir)
+`PUT /admin/access-rules` ilə istifadəçini **öz-özünün təsdiqçisi** etmək cəhdi → **422 «A user cannot approve their own operations»**. Yəni özünü-təsdiq **konfiqurasiya səviyyəsində də** bağlıdır, təkcə həll anında yox. Təsdiqçi təyin edilməyəndə isə istifadəçi öz alət sorğusunu çatdan həll edə bilir (APPR-04) — bu, dizayn baxımından ardıcıldır.
+
+### REG-10 ❌ BU DEPLOYMENT-DƏ MÜMKÜN DEYİL (yenidən təsnif)
+1C bağlayıcısı bu quraşdırmanın kataloqunda **ümumiyyətlə yoxdur**: `GET /registry/connectors?scope=all` 25 bağlayıcı qaytarır və mövcud `auth_kind` dəyərləri yalnız **`bearer`, `mcp_oauth2`, `none`**-dur — **`env_config` yoxdur**. Mağaza UI-ında da 1C kartı yoxdur. Yəni bu «avtomatlaşdırma məhdudiyyəti» deyil, **test obyekti mövcud deyil** → «icra oluna bilməyənlər» siyahısına köçürüldü.
+
+### ⚠️ L-11 (Low) — APPR-04 kömək mətni yoxdur
+Təsdiq gözlənilən zaman giriş qutusunun placeholder-i düzgün dəyişir, lakin sənədin gözlədiyi izah sətri («agent dayandı, cavabınız qrafiki davam etdirir») ekranda yoxdur. İstifadəçi `approve` yaza biləcəyini bilmir — yalnız düymələri görür.
+
+### ⚠️ TƏMİZLƏNMƏMİŞ TEST ARTEFAKTI (sahibin əl ilə silməsi lazımdır)
+APPR-04 testinin 4-cü addımında Gmail-də **`QA-TEST-SILIN`** adlı etiket **real olaraq yaradıldı**. Gmail bağlayıcısında **etiket silmək üçün alət yoxdur** (agent özü bunu bildirdi), ona görə silə bilmədim.
+**→ Zəhmət olmasa Gmail → Parametrlər → Bütün parametrlərə bax → Etiketlər bölməsindən `QA-TEST-SILIN` etiketini silin.** («QA-TEST-SILIN-2» yaradılmadı — o, rədd edildi.)
+
+### YENİLƏNMİŞ YEKUN SAYIM
+**104 tam (79 %) · 8 qismən (6 %) · 20 mümkün deyil (15 %)**
+Qalan 8 qismən: REG-07 · WORKER-05 · WORKER-06 (Google CAPTCHA) · WSHOP-02 (tier-li işçi yoxdur) · OFFER-01 (addım 7-8 qəsdən edilmədi) · SUSP-02 (manual ssenari ✅, unpaid DB tələb edir) · PAY-08 (dolayı sübut) · RESP-01 (5 enidən 3-ü).

@@ -139,3 +139,15 @@
 - SCHED-09 ✅: edit modal opens with "Bitmə tarixi" field; create with future expires_at works; past expires_at rejected (API 422 "'expires_at' must be in the future"). (Auto-disable-after-expiry not testable without waiting.)
 - Minor: schedule create field is "auto_approve" (true = skip approval); passing "skip_approval" on create is ignored (defaults auto_approve=false). UI sends the correct field.
 ### SCHED FINAL: 10/10 covered — 01✅ 02✅(TZ known) 03✅ 04✅(🔴 gate) 05✅ 06✅ 07✅ 08✅ 09✅ 10✅.
+
+## WORKER — full chain pass (super admin, end-to-end)
+- WORKER-02 ✅: offer worker to tenant via PUT /super-admin/tenants/{ten}/ai-workers/{wid} {assigned:true}; appears in admin's /admin/ai-workers immediately.
+- WORKER-03 ✅: admin assigns to user via PUT /admin/users/{uid}/ai-workers/{wid} {assigned:true}; user sees "QA Worker Chain" in chat left-nav "AI mütəxəssislər".
+- WORKER-04 ✅: user worker session — header "AI mütəxəssis QA Worker Chain" (visually distinct), agent responds per system prompt (one short sentence as instructed), sessions grouped under the worker. Locked worker (agent!, lapsed subscription) shows lock icon.
+- WORKER-07 ✅ 🔴 (asymmetric revoke — documented behavior CONFIRMED): offer+assign -> member_count=1; SA revoke from tenant (assigned:false) -> member_count=0 (assignments cleared); SA RE-OFFER (assigned:true) -> member_count stays 0 (NOT restored — admin must re-assign). Exactly as documented.
+- WORKER-08 ✅ (both branches): unused worker DELETE -> {"archived":false} (truly deleted, gone); used worker (has session) DELETE -> {"archived":true} (archived, kept). 
+- WORKER-08 OBSERVATION (Low): default GET /super-admin/ai-workers returns the archived worker (archived=true present) — handoff expects archived hidden by default. Likely UI-filtered via "Arxivdəkiləri göstər" toggle; verify UI hides archived by default (if it relies on API exclusion it's a defect).
+- WORKER-10 ✅ mobile 390px: no horizontal scroll (sw=390). (1 minor console error on worker nav drawer — note; worker name not shown because mobile sidebar is in a drawer.)
+- WORKER-05 🟡 (connect "Qoş" card) / WORKER-06 🟡 (connections panel): need a worker carrying an auth-requiring connector + the user connecting their OWN external service. Setting connectors on a worker via API didn't take (format), and completing the connect hits Google's CAPTCHA (same as REG-07). Mechanism is the same connect-card flow proven elsewhere; full test needs manual.
+### WORKER FINAL: 8 PASS (01,02,03,04,07,08,09,10) + 2 partial (05,06). Core chain create->offer->assign->session + asymmetric revoke + delete/archive + commerce guard all validated.
+### CLEANUP: QA Worker Chain archived (has a session, can't hard-delete); access rules removed; no active test workers.

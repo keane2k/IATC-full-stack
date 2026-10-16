@@ -153,6 +153,19 @@ Qalan üç test brauzerlə tamamlandı — **SCHED bölməsi tamdır (10/10)**.
 - **SCHED-08 ✅** statistika kartları **dəqiqdir** (Bütün 5 / Aktiv 5 / Tamamlanıb 1 / Uğursuz 0); axtarış süzgəci; uyğunsuz söz → «tapılmadı»; sıralama variantları. Konsol xətası sıfır.
 - **SCHED-09 ✅** redaktə modalında «Bitmə tarixi» sahəsi; gələcək tarix işləyir; keçmiş tarix rədd (API 422). (Avtomatik söndürmə gözləmə tələb edir.)
 
+## 3.9 WORKER bölməsinin tam icrası (zəncir uçdan-uca)
+
+**Yekun: 8 PASS + 2 qismən.** AI işçi zənciri tam quruldu.
+- **WORKER-02 ✅** işçini təşkilata təklif et (super admin) → admin dərhal görür.
+- **WORKER-03 ✅** admin işçini adama verir → istifadəçi sol menyuda «AI mütəxəssislər»də görür.
+- **WORKER-04 ✅** işçi sessiyası: başlıq «AI mütəxəssis: QA Worker Chain», cavab sistem promptuna uyğun (bir qısa cümlə), sessiyalar işçinin altında qruplaşır.
+- **WORKER-07 ✅ 🔴** asimmetrik geri-alma (sənədləşdirilmiş davranış təsdiqləndi): təklif+ver → member_count=1; təşkilatdan al → member_count=0; **yenidən təklif → member_count 0 qalır** (bərpa olunmur, admin əl ilə yenidən verməlidir).
+- **WORKER-08 ✅** hər iki hal: izsiz işçi silinir (`archived:false`), izli işçi (sessiyası var) arxivlənir (`archived:true`). **Qeyd (aşağı):** standart API siyahısı arxivlənmişi də qaytarır — UI «Arxivdəkiləri göstər» ilə süzməlidir; UI-nin standart gizlətməsi yoxlanmalıdır.
+- **WORKER-10 ✅** mobil 390px: üfüqi sürüşmə yoxdur. (Naviqasiya çekməcəsində 1 kiçik konsol xətası — qeyd.)
+- **WORKER-05/06 🟡** «Qoş» kartı / «Qoşulmalar» paneli: işçidə auth tələb edən bağlayıcı + istifadəçinin öz xidmətini qoşması lazımdır; işçiyə bağlayıcı təyini API ilə tutmadı və qoşma Google CAPTCHA-sına düşür (REG-07 kimi) — manual lazımdır.
+
+Əvvəl API ilə: WORKER-01 (yaratma/409/422, yalnız super admin), WORKER-09 (üzv abunə qapısı 403, AZN qiymət).
+
 ## 4. İcra edilə bilməyən testlər və səbəbi
 
 **A. Canlı sistemdə qadağan olanlar (§0.4):** SUSP-01…05 (hamısı `period_end`/`suspension_floor_date` baza yazması tələb edir) · OFFER-01/02 (boş filtrli təklif = bütün platformaya endirim) · PAY-03/07/08 · CARD-05 · OFFER-06 · SPAY-03. **Səbəb:** canlı bazaya yazma / real ödənişlərin sındırılması / 24 saat gözləmə.

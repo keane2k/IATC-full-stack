@@ -496,3 +496,60 @@ APPR-04 testinin 4-cü addımında Gmail-də **`QA-TEST-SILIN`** adlı etiket **
 ### YENİLƏNMİŞ YEKUN SAYIM
 **104 tam (79 %) · 8 qismən (6 %) · 20 mümkün deyil (15 %)**
 Qalan 8 qismən: REG-07 · WORKER-05 · WORKER-06 (Google CAPTCHA) · WSHOP-02 (tier-li işçi yoxdur) · OFFER-01 (addım 7-8 qəsdən edilmədi) · SUSP-02 (manual ssenari ✅, unpaid DB tələb edir) · PAY-08 (dolayı sübut) · RESP-01 (5 enidən 3-ü).
+
+## ═══ RETRY PASS #5 — qalan 8 qismən testin tamamlanması ═══
+8 testdən **5-i tam icra olundu** (4-ü yeni tapıntı ilə), 1-inin səbəbi dəqiqləşdi, 2-si qaldı.
+
+### RESP-01 ✅ TAM KEÇDİ — beş enin hamısı
+| En | Üfüqi sürüşmə | Paket sütunu | Konsol xətası |
+|---|---|---|---|
+| 1905 px | yox ✅ | 3 | 0 |
+| 1440 px | yox ✅ | 3 | 0 |
+| 1024 px | yox ✅ | 2 | 0 |
+| 768 px | yox ✅ | 1 | 0 |
+| 390 px | yox ✅ | 1 | 0 |
+`scrollWidth == clientWidth` hər beş endə; sütun sayı 3→3→2→1→1 kimi məntiqli azalır.
+
+### 🟠 M-7 (Medium) — PAY-08: sifariş TTL-i praktikada tətbiq olunmur
+- Platforma ayarı: **`payriff.order_ttl_minutes = 60`**.
+- Canlı vəziyyət (ölçüldü): **8 `pending` sifariş**, yaşları **31 · 60 · 85 · 253 · 255 · 256 · 257 · 257 dəqiqə** — dördü TTL-dən **4 dəfə çox** yaşayıb və hələ də `pending`-dir.
+- Bütün **19 `expired`** sətir **dünənki** sifarişlərdir (yaş ~1760–1830 dəq ≈ 29–30 saat). Yəni süpürgə işləyir, amma **60 dəqiqəlik TTL-ə görə yox** — görünür gündəlik (və ya çox seyrək) qrafiklə.
+- **Niyə vacibdir:** H-1 tapıntısı ilə birləşir — təklif bronu (`in_progress_count`) və `pending` işçi abunəsi məhz bu süpürgə ilə buraxılmalıdır. Süpürgə vaxtında işləmirsə, bron saatlarla tutulu qalır. Həmçinin müştərinin ödəniş tarixçəsində «Gözləyir» sətri saatlarla asılı qalır.
+- Testin öz addımı (`order_ttl_minutes`-i 5-ə endirmək) paylaşılan produksiya konfiqi olduğu üçün icra edilmədi; nəticə canlı data üzərində ölçüldü.
+
+### 🟠 M-8 (Medium) — WSHOP-02: həcm zolağı (tier) ümumiyyətlə yaradıla bilmir
+- Öz test işçim yaradıldı, qiymət təyin edildi (`PUT /super-admin/ai-workers/{id}/price` — endpoint tapıldı).
+- Redaktə formasında **«Həcm pillələri»** bölməsi var, amma yalnız mətn göstərir: «Həcm pilləsi yoxdur — hər adam sayında siyahı qiyməti tətbiq olunur.» **Pillə əlavə etmək üçün heç bir düymə/sahə yoxdur** (bölmə ətrafındakı yeganə düymə «Qiyməti yadda saxla»-dır).
+- API ilə: `PUT .../price` gövdəsinə `tiers:[{min_seats,max_seats,unit_price_azn},…]` əlavə etdim → **200 qaytardı, amma cavabda `tiers: []`** — yəni **sahə səssizcə atılır**. Ayrıca uclar (`/tiers`, `/volume-tiers`, `/price/tiers`) → **404**.
+- Yəni data modelində `tier_count`, `tier_label`, `anomaly` sahələri var, amma **zolaq yaratmaq mexanizmi mövcud deyil**.
+- **Nəticə:** WSHOP-02-nin 🔴 ssenariləri (üst-üstə düşən zolaqlarda bahalının qalib gəlməsi, boşluqda `anomaly="gap"`) **bu buraxılışda baş verə bilməz** — bu, müsbət tərəfdir; mənfi tərəfi isə reklam olunan funksiyanın işləməməsi və API-nin naməlum sahəni **səssizcə udmasıdır** (müştəri saxlandığını düşünə bilər).
+
+### 🟠 M-9 (Medium) — WORKER-05: «Qoş» kartı qeyri-sabitdir (test 🔁3 tələb edir — 3 dəfə təkrarlandı)
+Gmail-i qoşulmamış üzv hesabı ilə işçi sessiyasında eyni sual 3 dəfə verildi:
+- **1-ci cəhd ✅:** agent `invoke_connector` çağırdı → **kart çıxdı**: «**Gmail xidmətini qoşun**» · «**Bu işi görmək üçün AI mütəxəssisə Gmail xidmətinə sizin öz girişiniz lazımdır. Bir dəfə qoşun — AI mütəxəssis işinə davam edəcək.**» + «**Qoş**» düyməsi. **Kart yalnız BİR xidməti adlandırır** (addım 8 ✅); işçinin tam tərkibi açılmır.
+- **2-ci və 3-cü cəhd ❌:** agent əvvəlcə `list_connectors` çağırdı, bağlantı olmadığını gördü və **kart ÇIXARMADAN** mətnlə cavab verdi: «Gmail-i Registry səhifəsindən qoşun, sonra son məktubunuzu göstərə bilərəm.» / «E-poçt bağlayıcısını Registry səhifəsindən qoşduqdan sonra yenidən istəyin.»
+- **Nəticə:** vəd edilən «bir kliklə qoş və agent davam etsin» axını **3 haldan yalnız 1-ində** işləyir; qalan hallarda istifadəçi əl ilə başqa səhifəyə yönləndirilir və söhbət kəsilir. Sənəd mətni ilə məhsul mətni arasında kiçik fərq də var («AI işçiyə» → «AI mütəxəssisə» — adlandırma dəyişikliyi, qüsur deyil).
+- Addım 4-7 (Qoşulur… → popup → «Qoşuldu — davam et») kart qeyri-sabit olduğu + Google CAPTCHA səbəbi ilə icra edilmədi.
+
+### 🟠 M-10 (Medium) — WORKER-06: «Qoşulmalar» paneli ÜMUMİYYƏTLƏ yoxdur
+- İşçi sessiyasında «⋮» (**«Sessiya əməliyyatları»**) menyusu açıldı — bəndlər: «Layihəyə köçür», «Adını dəyiş», «Sessiyanı sil». **«Qoşulmalar» bəndi yoxdur.**
+- Adi (işçi olmayan) söhbətdə də eyni menyu — fərq yoxdur.
+- **Hər iki rolda yoxlandı:** üzv (heç bir xidmət qoşmayıb) və tenant admin (Gmail qoşulub) — ikisində də panel yoxdur. Yəni panel «qoşulma varsa görünür» şərtinə görə gizlənmir, sadəcə **mövcud deyil**.
+- Nəticə: sənəddə təsvir olunan panel (başlıq «Bu AI işçi üçün qoşduğunuz xidmətlər», boş vəziyyət mətni, sətir içi «Ayır» təsdiqi) **bu buraxılışda implementasiya olunmayıb**. WORKER-06-nın addımlarının heç biri icra edilə bilmir.
+
+### SUSP-02 — səbəb dəqiqləşdirildi (qismən qalır)
+`PATCH /super-admin/tenants/{id} {"status":"suspended","suspended_reason":"unpaid"}` → tenant dayandırılır, **lakin səbəb həmişə `manual` yazılır** (aktiv vəziyyətdən təmiz keçid edilərək iki dəfə yoxlandı). Yəni **`unpaid` səbəbini süni yaratmaq mümkün deyil** — o, yalnız sistemin öz ödəniş axını ilə (abunə ödənilmədən bitəndə) qoyulur. SUSP-02-nin əsas ssenarisi üçün DB girişi və ya real ödənilməmiş bitmə gözləmək lazımdır. **Faydalı yan nəticə:** super-admin tərəfindən edilən hər dayandırma auditdə **həmişə `manual`** kimi qeyd olunur (səbəb saxtalaşdırıla bilmir).
+
+### Hələ də tamamlana bilməyən 2 test
+- **REG-07** — Google OAuth popup-unda **CAPTCHA** («Type the text you hear or see») avtomatlaşdırmanı bloklayır. Tətbiq tərəfi əvvəl təsdiqlənib («Sign in with Google — to continue to orgsysai.com» + Privacy/Terms). Popup-un yarımçıq bağlanması addımı da kart qeyri-sabitliyi (M-9) ucbatından təkrarlana bilmədi.
+- **OFFER-01 addım 7-8** — **qəsdən edilmədi**: boş filtrli təklifi həqiqətən aktivləşdirmək 24 real təşkilatın hamısına endirim verərdi. Əvəzinə ekvivalent sübut toplanıb: tenant-a bağlı təklifdə banner **başqa təşkilatda göründü** və kassa endirimi **kupon kodu olmadan özü tətbiq etdi** (OFFER-04: tutulan 9.00 / yazılan 10.00), əhatə önizləməsi isə «24 təşkilatdan 24-i» ilə real sayla üst-üstə düşdü.
+
+### YENİLƏNMİŞ YEKUN SAYIM
+**109 tam (83 %) · 3 qismən (2 %) · 20 mümkün deyil (15 %)**
+Qalan 3 qismən: **REG-07** (CAPTCHA) · **OFFER-01** (qəsdən buraxılmış addım) · **SUSP-02** (`unpaid` səbəbi süni yaradıla bilmir).
+
+### Təmizlik (bu pass)
+- «QA Tier Test» işçisi **silindi**.
+- Üzvə müvəqqəti verilmiş «agent!» təyinatı **geri alındı** (əvvəlki vəziyyətinə qaytarıldı).
+- QA tenant `a8155f37…` **`active`** vəziyyətinə qaytarıldı.
+- Sahibin «agent!» işçisinə **heç bir dəyişiklik getmədi** (səhvən açılan redaktə forması yazma göndərmədən bağlandı — yoxlanıldı).

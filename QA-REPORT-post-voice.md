@@ -18,11 +18,11 @@
 
 | Göstərici | Say |
 |---|---:|
-| **Voice-dən sonrakı test əhatəsi (132 ID)** | **104 tam (79 %) · 8 qismən (6 %) · 20 mümkün deyil (15 %)** — dəqiq siyahı §3.11-dədir |
+| **Voice-dən sonrakı test əhatəsi (132 ID)** | **109 tam (83 %) · 3 qismən (2 %) · 20 mümkün deyil (15 %)** — dəqiq siyahı §3.11/§3.13-dədir |
 | Brauzer UI testi (desktop 1905px + mobil 390px + tünd tema) | **15+ ekran/axın** — hamısı §0.4 məcburi yoxlamalarından keçdi |
 | **Yeni Kritik qüsur** | **0** |
 | **Yeni Yüksək qüsur** | **1** (H-1 — limitli təklifin limitdən çox istifadəsi) |
-| Orta səviyyəli qeyd (sənədlə uyğunsuzluq / zəiflik) | 6 (M-1…M-6) |
+| Orta səviyyəli qeyd (sənədlə uyğunsuzluq / zəiflik) | 10 (M-1…M-10) |
 | Aşağı səviyyəli qeyd | 11 (L-1…L-11) |
 | Bilinən problemlərin canlı təsdiqi (yeni deyil) | 8 (TZ · illik paket · kart saxlama · zəif parol serveri · OFFER-02 təsdiqsiz redaktə · PAY-05 banner qolları · SUSP-02 əl ilə dayandırma · SPAY-05 STT/TTS bölməsinin yoxluğu) |
 | Düzəldiyi aşkarlanan köhnə problem | 2 (OFFER-04 «Müddət» sütunu kəsilməsi · WALLET-08 xəbərdarlığın heç vaxt çıxmaması) |
@@ -338,11 +338,11 @@ Bizim UI mətnlərimiz **azərbaycanca və rəqəmlidir** («**Ən azı 10.00 �
 ### Yekun əhatə — dürüst sayım (132 test)
 | Kateqoriya | Say | Pay |
 |---|---:|---:|
-| **Tam icra olundu, sübutlu** | **104** | 79 % |
-| **Qismən** (əsas/təhlükəli hissə yoxlanılıb, bir addım qalıb) | **8** | 6 % |
+| **Tam icra olundu, sübutlu** | **109** | 83 % |
+| **Qismən** | **3** | 2 % |
 | **Ümumiyyətlə icra oluna bilmədi** | **20** | 15 % |
 
-**Qismən icra olunan 8:** REG-07 + WORKER-05/06 (Google CAPTCHA) · WSHOP-02 (tier-li işçi yoxdur) · OFFER-01 (addım 7-8 **qəsdən** edilmədi — 24 təşkilata endirim düşərdi) · SUSP-02 (manual ssenarisi ✅, unpaid ssenarisi DB tələb edir) · PAY-08 (19 `expired` sətirlə dolayı sübut, TTL dəqiq ölçülmədi) · RESP-01 (5 enidən 3-ü ölçüldü, heç birində problem yoxdur).
+**Qalan 3 qismən:** **REG-07** (Google OAuth popup-unda CAPTCHA; tətbiq tərəfi təsdiqlənib) · **OFFER-01** (addım 7-8 **qəsdən** edilmədi — 24 real təşkilata endirim düşərdi; ekvivalent sübut §3.11-dədir) · **SUSP-02** (`unpaid` səbəbi süni yaradıla bilmir — §3.13).
 
 **İcra oluna bilməyən 19 — hamısı mühit/konfiqurasiya səbəbidir, məhsul qüsuru deyil:**
 
@@ -383,6 +383,35 @@ Gmail-in bəzi yazma alətləri **default olaraq «Təsdiq tələb edir»**-dir,
 İstifadəçini **öz-özünün təsdiqçisi** etmək cəhdi → **422 «A user cannot approve their own operations»**. Özünü-təsdiq həm konfiqurasiya, həm həll anında bağlıdır. Təsdiqçi təyin edilməyəndə istifadəçi öz alət sorğusunu çatdan həll edə bilir — dizayn ardıcıldır.
 
 > ⚠️ **Sahibin əl ilə silməli olduğu test artefaktı:** APPR-04-ün təsdiq addımında Gmail-də **`QA-TEST-SILIN`** adlı etiket real olaraq yaradıldı. Gmail bağlayıcısında etiket **silmək üçün alət yoxdur**, ona görə silə bilmədim. Zəhmət olmasa Gmail → Parametrlər → Bütün parametrlərə bax → Etiketlər bölməsindən silin. («QA-TEST-SILIN-2» yaradılmadı — rədd edildi.)
+
+
+## 3.13 Qalan 8 qismən testin tamamlanması (pass #5) — 5-i tam icra olundu
+
+### RESP-01 ✅ tam keçdi — beş enin hamısı
+1905 · 1440 · 1024 · 768 · 390 px: **heç birində üfüqi sürüşmə yoxdur** (`scrollWidth == clientWidth`), paket şəbəkəsi **3 → 3 → 2 → 1 → 1** sütuna məntiqli azalır, **0 konsol xətası**.
+
+### 🟠 M-7 (Medium) — PAY-08: sifariş TTL-i praktikada tətbiq olunmur
+Ayar **`payriff.order_ttl_minutes = 60`**, lakin canlıda **8 `pending` sifariş** var və yaşları **31 · 60 · 85 · 253 · 255 · 256 · 257 · 257 dəqiqə** — dördü TTL-dən **4 dəfə çox** yaşayıb. Bütün **19 `expired`** sətir isə **dünənkidir** (~29–30 saat). Yəni süpürgə işləyir, amma 60 dəqiqəlik TTL-ə görə yox.
+**Niyə vacibdir:** H-1 ilə birləşir — təklif bronu (`in_progress_count`) və `pending` işçi abunəsi məhz bu süpürgə ilə buraxılmalıdır; vaxtında işləmirsə bron saatlarla tutulu qalır, müştərinin tarixçəsində «Gözləyir» asılı qalır.
+
+### 🟠 M-8 (Medium) — WSHOP-02: həcm zolağı (tier) ümumiyyətlə yaradıla bilmir
+Redaktə formasında «Həcm pillələri» bölməsi **var**, amma yalnız «Həcm pilləsi yoxdur…» mətnini göstərir — **pillə əlavə etmək üçün heç bir element yoxdur**. API ilə `PUT /super-admin/ai-workers/{id}/price` gövdəsinə `tiers:[…]` əlavə edildikdə **200 qaytarır, amma cavabda `tiers: []`** — sahə **səssizcə atılır**; ayrıca uclar 404.
+Data modelində `tier_count` / `tier_label` / `anomaly` var, mexanizm isə yoxdur. **Müsbət tərəf:** WSHOP-02-nin 🔴 ssenariləri (üst-üstə düşən zolaqda ucuzun seçilməsi, boşluqda qiymətin 0 olması) bu buraxılışda **baş verə bilməz**. **Mənfi tərəf:** reklam olunan funksiya işləmir və API naməlum sahəni səssizcə udur.
+
+### 🟠 M-9 (Medium) — WORKER-05: «Qoş» kartı qeyri-sabitdir (test 🔁3 — 3 dəfə təkrarlandı)
+Gmail-i qoşulmamış üzv hesabı ilə eyni sual 3 dəfə verildi:
+- **1/3 ✅** kart çıxdı: «**Gmail xidmətini qoşun**» · «Bu işi görmək üçün AI mütəxəssisə Gmail xidmətinə sizin öz girişiniz lazımdır. Bir dəfə qoşun — AI mütəxəssis işinə davam edəcək.» + «**Qoş**». Kart **yalnız bir xidməti** adlandırır (addım 8 ✅).
+- **2/3 ❌** agent əvvəlcə `list_connectors` çağırıb kart **çıxarmadan** mətnlə cavab verdi: «Gmail-i Registry səhifəsindən qoşun…» — istifadəçi başqa səhifəyə yönləndirilir, söhbət kəsilir.
+Vəd edilən bir-kliklik axın **üç haldan birində** işləyir. Addım 4-7 (Qoşulur… → popup → «Qoşuldu — davam et») kartın qeyri-sabitliyi + CAPTCHA səbəbi ilə icra edilmədi.
+
+### 🟠 M-10 (Medium) — WORKER-06: «Qoşulmalar» paneli ümumiyyətlə yoxdur
+İşçi sessiyasında «⋮» (**«Sessiya əməliyyatları»**) menyusunda bəndlər yalnız: «Layihəyə köçür», «Adını dəyiş», «Sessiyanı sil». **«Qoşulmalar» yoxdur** — adi söhbətdə də eynidir. **Hər iki rolda** yoxlandı (üzv: heç nə qoşmayıb · tenant admin: Gmail qoşulub) — ikisində də yoxdur, yəni şərti gizlənmə deyil. Sənəddə təsvir olunan panel (başlıq, boş vəziyyət mətni, sətir içi «Ayır» təsdiqi) **implementasiya olunmayıb** → WORKER-06-nın addımlarının heç biri icra edilə bilmir.
+
+### SUSP-02 — səbəb dəqiqləşdirildi (qismən qalır)
+`PATCH /super-admin/tenants/{id} {"suspended_reason":"unpaid"}` tenant-ı dayandırır, **lakin səbəb həmişə `manual` yazılır** (aktiv vəziyyətdən təmiz keçidlə iki dəfə yoxlandı). `unpaid` səbəbini süni yaratmaq mümkün deyil — onu yalnız sistemin öz ödəniş axını qoyur. **Faydalı yan nəticə:** super-admin dayandırması auditdə **həmişə `manual`** kimi görünür, səbəb saxtalaşdırıla bilmir.
+
+### Təmizlik (pass #5)
+«QA Tier Test» işçisi **silindi** · üzvə müvəqqəti verilmiş «agent!» təyinatı **geri alındı** · QA tenant **`active`**-ə qaytarıldı · sahibin «agent!» işçisinə **heç bir dəyişiklik getmədi** (səhvən açılan redaktə forması yazma göndərmədən bağlandı, yoxlanıldı).
 
 ## 4. İcra edilə bilməyən testlər və səbəbi
 

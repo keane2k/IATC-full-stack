@@ -146,6 +146,13 @@ Sahibdən tam icazə (admin + super admin + real Google hesabı) alındıqdan so
 
 Əvvəl API ilə sübut olunmuşdu: APPR-02 (təsdiq), **APPR-05 (🔴 özünü-təsdiq qadağası)**, **APPR-09 (🔴 stuck RBAC)**, APPR-12 (mobil).
 
+## 3.8 SCHED bölməsinin tam icrası (10/10)
+
+Qalan üç test brauzerlə tamamlandı — **SCHED bölməsi tamdır (10/10)**.
+- **SCHED-07 ✅** «İşləmələri gör» → «İŞƏ SALINMA TARİXÇƏSİ» paneli açılır; «İndi işə sal» düyməsi; boş vəziyyət «Hələ işə salınma yoxdur»; status nişanları **azərbaycanca, xam kod yoxdur**; dostcasına kadens etiketləri (xam cron yox). qa-s7-history-də 3 icra qeydə alındı (status=completed, «OK»).
+- **SCHED-08 ✅** statistika kartları **dəqiqdir** (Bütün 5 / Aktiv 5 / Tamamlanıb 1 / Uğursuz 0); axtarış süzgəci; uyğunsuz söz → «tapılmadı»; sıralama variantları. Konsol xətası sıfır.
+- **SCHED-09 ✅** redaktə modalında «Bitmə tarixi» sahəsi; gələcək tarix işləyir; keçmiş tarix rədd (API 422). (Avtomatik söndürmə gözləmə tələb edir.)
+
 ## 4. İcra edilə bilməyən testlər və səbəbi
 
 **A. Canlı sistemdə qadağan olanlar (§0.4):** SUSP-01…05 (hamısı `period_end`/`suspension_floor_date` baza yazması tələb edir) · OFFER-01/02 (boş filtrli təklif = bütün platformaya endirim) · PAY-03/07/08 · CARD-05 · OFFER-06 · SPAY-03. **Səbəb:** canlı bazaya yazma / real ödənişlərin sındırılması / 24 saat gözləmə.

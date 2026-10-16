@@ -306,3 +306,84 @@ Banner müvəqqəti toast olduğu üçün baza mətni ilə fərq götürülərə
 - Yalnız `failed` ayrıca tutulur; **qalan hər şey (ləğv edilmiş və naməlum daxil) nikbin «gözləyin» qoluna düşür**.
 - Təsir: ödənişi **özü ləğv edən** istifadəçiyə «ödənişiniz yoxlanılır, paketiniz yenilənəcək» deyilir; `unknown` halında isə sifariş nömrəsi ümumiyyətlə gəlməyib — heç nə yoxlanmır, amma istifadəçiyə gözləmək tövsiyə edilir.
 - Xam kod / i18n açarı sızmır ✅ (mesajlar azərbaycancadır).
+
+## RETRY PASS #2 (davamı) — WSHOP-05, SPAY-05, WALLET-05/06
+### WSHOP-05 ✅ KEÇDİ — kartla AI işçi alışı (uçdan-uca)
+Təzə, **balansı 0** olan tenant (`fcf582c7…`) quruldu; super-admin «agent!» işçisini həmin tenant-a təklif etdi.
+- `GET /billing/workers/quotes?seats=1&cadence=monthly` → `unit_price 5.00`, `total_azn 5.00`, `source:"base"` ✅
+- `POST /billing/workers/{id}/subscribe {seats:1}` → balans 0 olduğu üçün **şlüz yolu**: `settled:false`, `status:"pending"`, `paid_from:"card"`, `amount_azn:"5.00"`, `discount_azn:"0.00"`, ödəniş linki ✅
+- Payriff səhifəsi: «Amount **5.00 AZN** · Commission 0.00 · Description **AI worker · monthly · 1 seat(s)**» → kart + 3DS → `payment=ok` ✅
+- Nəticə: abunə **pending → active**, `period_start/period_end` doldu; **balans 0-da qaldı** (kartdan tutuldu, balansdan yox) ✅; ödəniş sətri `kind=worker, status=paid, gateway_status=APPROVED, 5.00 AZN` ✅
+- Təmizlik: abunə ləğv edildi (`auto_renew=false`), işçi tenant-dan geri alındı.
+
+### SPAY-05 ✅ TAM TƏSDİQLƏNDİ (+ bilinən boşluq canlıda sübut olundu)
+- `settings`: `usd_azn_rate=1.8` (min 0.5 / max 5), `margin_percent=25` (0–200) ✅
+- **Nümunə məbləği serverdə hesablanır və riyaziyyatı dəqiqdir:** `sample_tokens_in/out = 1000/1000`; Claude Sonnet 4.6 ($3/$15 per Mtok) → (3+15)/1000 × 1.8 × 1.25 = **0.0405 ₼** = cavabdakı `sample_azn` ✅ (3 model üzrə yoxlandı, hamısı üst-üstə düşdü)
+- `unpriced: []` — qiyməti olmayan model yoxdur ✅
+- 🔴 **Bilinən boşluq təsdiqləndi:** `spend.by_source` göstərir ki səs **real xərc yaradır** (`voice_stt: 0.0379 ₼`, `voice_tts: 1.9249 ₼`), **lakin `models` siyahısında STT/TTS sətri yoxdur** (9 modelin hamısı token əsaslıdır) və bu ekranda onlar üçün **heç bir qiymət bölməsi/parametri yoxdur** → dəyərlər koddakı sabitlərdir. Handoff §8-dəki iddia canlıda sübut olundu.
+
+### WALLET-05/06 ❌ BLOKLU (səbəb dəqiq sənədləşdirildi)
+- Uc mövcuddur: `GET /billing/wallet/auto-topup` → `{"enabled":false,"amount_azn":"0","threshold_azn":"0","card_available":**false**,…}`
+- Qurmaq cəhdi: `PUT /billing/wallet/auto-topup {enabled:true,threshold:5,amount:20}` → **409 `{"code":"no_saved_card"}`**
+- Yəni avtomatik doldurma **düzgün şəkildə** saxlanmış karta bağlıdır, kart saxlama isə `payriff.card_save=false` ilə söndürülüb (CARD-01-də sübut olundu) → WALLET-05 və WALLET-06 bu konfiqurasiyada aparıla bilməz. **Məhsul qüsuru deyil, konfiqurasiya nəticəsidir.**
+- ⚠️ **L-7 (Low):** 409 cavabının `message` sahəsi insan cümləsi deyil, **kodun özüdür** (`"message":"no_saved_card"`). UI öz mətnini göstərir («Əvvəlcə bir dəfə kartla balans artırın.»), ona görə istifadəçiyə təsiri yoxdur — amma API istehlakçısı üçün natamamdır.
+
+### ⚠️ L-8 (Low) — işçi ödənişlərində kart məlumatı yazılmır
+`/super-admin/payments`-də **plan və topup** sətirləri `masked_pan`/`card_brand` saxlayır (`400000******2078`, `VISA`), **işçi (`kind=worker`) sətri isə boş** (`masked_pan:""`, `card_brand:""`, həmçinin `period_start/period_end` boş — dövr yalnız abunə obyektindədir). Eyni ekranda sütunlar var, ona görə dəstək/uzlaşdırma zamanı işçi ödənişini karta bağlamaq mümkün olmur.
+
+## RETRY PASS #2 (son) — SPAY-07, WALLET-02, PLAN-04, SUSP-02
+### SPAY-07 ✅ KEÇDİ — rol qapısı
+- `GET /super-admin/payments`: tenant admin **403** «Super-admin access required», adi üzv **403**, tokensiz **401** ✅
+- `PUT /super-admin/ai-prices/settings`: admin **403**, üzv **403** ✅
+- UI: tenant admin `/super-admin/payments` ünvanını birbaşa açanda **`/chat`-ə yönləndirilir**; 3.5 saniyə ərzində 250 ms-lik nümunələmə ilə izlənildi — **real ödəniş datası (APPROVED / masked_pan / məbləğlər) bir an belə görünmədi** ✅ (əsas uğursuzluq əlaməti yoxdur).
+
+### WALLET-02 ✅ KEÇDİ — proqnoz sətri
+- Admin tenant (balans **226.246824 ₼**, 30 günlük sərf **6.753176 ₼**): ekranda «Son 30 gündə 6.75 ₼ xərclənib. Bu sürətlə təxminən daha **1,005 gün** bəs edər.»
+  Yoxlama: 226.246824 ÷ (6.753176 ÷ 30) = **1005.07** → ekranda **1005** (aşağı yuvarlaqlaşdırılıb) ✅ — rəqəm uydurma deyil.
+- Proqnoz 7 gündən çox olduğu üçün «Balans azalır» xəbərdarlığı **çıxmır** ✅
+- Balansı 0 / sərfi 0 olan tenant: proqnoz sətri **ümumiyyətlə çəkilmir** («Son 30 gündə xərc olmayıb.») ✅ — uydurma proqnoz verilmir.
+- Qeyd (L-5-ə əlavə): minlik ayırıcı vergüldür (`1,005`), onluq ayırıcı nöqtə (`6.75 ₼`) — AZ formatı deyil, en-US formatıdır.
+
+### PLAN-04 ✅ KEÇDİ — «Satışla əlaqə» paketləri
+- Qiymət yerində **«Sazişlə»** yazır (rəqəm yox) ✅; «hər istifadəçiyə / ay» sətri enterprise/onpremise kartlarında **görünmür** ✅
+- Düymə həqiqətən **`<a target="_blank">`**-dir ✅
+- Ünvan: **`https://orgsysai.com`** — yəni `sales_contact_email` ayarı **boşdur** və sənəddə yazılan **fallback** işləyir ✅
+- ⚠️ **L-9 (Low):** fallback işləsə də nəticədə «Satışla əlaqə» düyməsi sadəcə ana səhifəni açır — enterprise müştərisi üçün faktiki əlaqə yolu yoxdur. `sales_contact_email` ayarının doldurulması tövsiyə olunur.
+
+### 🟠 M-6 (Medium, müştəri təsiri yüksək) — SUSP-02: əl ilə dayandırılmış təşkilat ödəyə bilir, amma dayandırılmış qalır
+Öz QA tenant-ım (`a8155f37…`, «QA Lock Test») super-admin ilə **`status=suspended, suspended_reason=manual`** edildi, sonra həmin tenant admini ilə:
+- Söhbət (yazma) → **403** `{"code":"tenant_read_only","message":"Your organisation is in read-only mode. Ask the platform owner to reactivate it."}` ✅ gözlənilən
+- **Balans doldurma** → **403 `tenant_read_only`** (bloklanır)
+- **Paket checkout-u (`POST /payments/checkout {plan_code:"plus"}`) → 200** — bloklanmır, ödəniş linki verilir
+- Ödəniş **tam tamamlandı** (34.00 ₼, Payriff 3DS → `payment=ok`)
+- **Nəticə:** abunə **pro → plus, active** oldu (pul tutuldu, paket yüksəldi), **LAKİN** tenant hələ də `status=suspended`, `suspended_reason=manual`; `/auth/me` də `suspended` göstərir; yazma əməliyyatı yenə **403 `tenant_read_only`**.
+- Yəni handoff-dakı 🔴 davranış («ödəniş yalnız `unpaid` səbəbini qaldırır») **canlıda təsdiqləndi**. Dizayn qərarı olsa da, **boşluq budur:** balans doldurma bloklanır, paket ödənişi isə bloklanmır və **ödənişdən əvvəl heç bir xəbərdarlıq verilmir** — müştəri 34 ₼ ödəyib istifadə edə bilmədiyi paket alır.
+- **Tövsiyə:** `suspended_reason='manual'` halında ya checkout-u da bloklamaq (topup kimi), ya da ödəniş səhifəsindən əvvəl «Bu təşkilat sahib tərəfindən dayandırılıb — ödəniş onu açmayacaq» xəbərdarlığı göstərmək.
+- **Təmizlik:** tenant **`active`-ə qaytarıldı** və yazma əməliyyatının bərpa olunduğu yoxlanıldı (chat → 200).
+
+### PLAN-03 ✅ KEÇDİ — paket siyahısı və cari paket
+- Cari paketin düyməsi **sönülüdür** və «**Sizin paketiniz**» yazır; digər paketlərin düymələri aktivdir («Bu paketi seç», «Ödə və keç») ✅ — admin özünə ikinci dəfə eyni paketi ala bilmir.
+- Sağ sütun: «**Ayda 136.00 ₼**» (Plus × 4 yer = 136, PLAN-06 riyaziyyatı ilə uyğun) · «**2026-11-14 tarixində yenilənir**» ✅
+- Blok sırası (mətn indeksinə görə): Balansınız (864) → Balansı artır (1148) → paket şəbəkəsi/Cari paket (1868) → Ödəniş tarixçəsi (4435) ✅ gözlənilən sıra ilə uyğun.
+
+### 🔴 I18N-02 TƏSDİQLƏNDİ — `<html lang>` tətbiqdə sabit `"en"`
+- Landing (`/`): `<html lang="az"` ✅ **düzgün**
+- Tətbiq (`/chat/plans`): `<html lang="en"` — **dil `en`, `ru` və `az` seçildikdə də dəyişmir** (üçü də yoxlandı).
+- Yəni problem yalnız əsas tətbiqdədir; ekran oxuyucuları və dil-asılı CSS davranışı üçün əlçatanlıq qüsurudur. Handoff-dakı iddia **tam təsdiqləndi**.
+
+### PROF-05 ✅ KEÇDİ — dil dəyişmə (az / en / ru)
+- `en`: kiril 0, xam i18n açarı yox; `/chat/plans`, `/chat/approvals`, `/chat/schedules`, `/chat/registry`, `/chat/files` gəzildi — qalan azərbaycanca sətirlərin **hamısı istifadəçi məzmunudur** (yan paneldəki söhbət başlıqları: «Salam, qısa cavab ver», «Gizli söz nə idi?» və s.), **tərcümə boşluğu deyil** ✅
+- `ru`: **2678 kiril simvolu**, xam açar yox ✅; daşan element sayı hər üç dildə **eynidir (6)** — bunlar yan paneldəki uzun söhbət başlıqlarıdır (ellipsis ilə, dizayn gereyi) → **rus mətni qutulardan daşmır** ✅
+- `az`-a qayıdış və **səhifə yeniləndikdən sonra dil qalır** ✅ (dil `localStorage`-dadır).
+
+### I18N-03 ✅/⚠️ — şlüz və backend mətnlərinin dili
+- **Bizim UI mətnlərimiz azərbaycancadır və rəqəmlidir** ✅: «**Ən azı 10.00 ₼.**» (minimumdan az məbləğdə «Ödənişə keç» düyməsi **sönülüdür** — səhv ümumiyyətlə baş vermir), «Balans bitib», «Balansınız boşdur…», «Ödəniş alındı. Paketiniz yeniləndi.», «Ödəniş alınmadı.»
+- **Şlüzə göndərdiyimiz təsvir də azərbaycancadır** ✅: Payriff səhifəsində «Balans 10.00 AZN, endirim -1.00 AZN, ödəniləcək 9.00 AZN».
+- ⚠️ **Xam API mesajları ingiliscədir** (L-1 ilə eyni kök): `The smallest top-up is 10 AZN.` · `Your organisation's AI balance is used up.` · `Your Free plan does not include this feature.` · `A plan offer cannot take the price to zero…` · `Your organisation is in read-only mode…`. UI öz AZ mətnini göstərdiyi üçün istifadəçiyə çatmır, amma `detail.message`-i birbaşa göstərən hər hansı səth ingiliscə görünər.
+- Payriff səhifəsinin **öz** mətni (Amount/Commission/Total/Pay) ingiliscədir — test bunu qəbul edilən sayır (şlüzün öz UI-ı).
+
+## YEKUN ƏHATƏ (voice-dən sonra, mobil Əlavə 4 istisna olmaqla)
+**132 test ID-dən 119-u icra olundu/sənədləşdirildi (90 %).** Qalan 13:
+- **Kart saxlama söndürülüb** (konfiqurasiya): CARD-03/04/06
+- **`payriff.enabled` söndürmək tələb olunur** (paylaşılan produksiya konfiqi): PAY-12, WSHOP-07
+- **DB-də `period_end` manipulyasiyası tələb olunur** (§0.4): SUSP-03/04/05, OFFER-07

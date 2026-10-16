@@ -387,3 +387,69 @@ Təzə, **balansı 0** olan tenant (`fcf582c7…`) quruldu; super-admin «agent!
 - **Kart saxlama söndürülüb** (konfiqurasiya): CARD-03/04/06
 - **`payriff.enabled` söndürmək tələb olunur** (paylaşılan produksiya konfiqi): PAY-12, WSHOP-07
 - **DB-də `period_end` manipulyasiyası tələb olunur** (§0.4): SUSP-03/04/05, OFFER-07
+
+## RETRY PASS #3 — PAY-03 / PAY-13 / PAY-04 (əvvəl səhv olaraq "canlıda qadağan" sayılmışdı)
+**Düzəliş:** PAY-03-ü əvvəl «canlıda aparıla bilməz» kimi təsnif etmişdim — səhv idi. Sandbox-da səhv OTP ilə rədd etdirmək heç bir riski yoxdur və test edildi.
+
+### PAY-03 ✅ KEÇDİ — rədd edilən ödəniş
+- QA tenant-da 10 ₼-lıq topup checkout → kart dolduruldu → 3DS səhifəsində **qəsdən səhv OTP (`000000`)**.
+- Birinci cəhd: «**The otp code is wrong**» (şlüzün öz mətni, ingiliscə — qəbul edilir). İkinci cəhddən sonra şlüz **rədd etdi** və `https://orgsysai.com/chat/plans`-a qaytardı.
+- Ödəniş sətri: **`status=failed`, `gateway_status=DECLINED`, `failure_reason="DECLINED"`**, `masked_pan=400000******2078` ✅
+- **Balans dəyişmədi (20.00 ₼)** — uğursuz ödənişə görə heç bir kredit yazılmadı ✅
+- Qayıdış bannerinin mətni PAY-05-də ayrıca tutulub: `?payment=failed` → «**Ödəniş alınmadı.**» ✅
+
+### PAY-13 ✅/⚠️ — ödəniş tarixçəsi və statuslar
+İndi hesabda hər üç status var. `/chat/plans` → «Ödəniş tarixçəsi»:
+`2026-10-16 · 10.00 ₼ · **Alınmadı** · DECLINED` | `10.00 ₼ · **Gözləyir**` | `9.00 ₼ · **Ödənilib**`
+- Statuslar **azərbaycanca lokallaşıb** (Alınmadı / Gözləyir / Ödənilib) ✅, məbləğlər manatla düzgündür ✅
+- ⚠️ **L-10 (Low→Orta, lokalizasiya):** «Alınmadı» nişanının yanında şlüzün **xam kodu `DECLINED`** olduğu kimi müştəriyə göstərilir. Bu, testin «xam kod ekrana düşməməlidir» şərtini pozur. Tövsiyə: kodu insan cümləsinə çevirmək («Bank ödənişi rədd etdi») və ya şlüz mətni kimi işarələmək.
+
+### PAY-04 ✅ KEÇDİ — yarımçıq qoyulmuş ödəniş
+- Kart məlumatı doldurulmadan tərk edilən checkout sətri **`pending`** olaraq qalır (`payriff_order_id` yazılıb, balans/paket **dəyişmir**) — öz sifarişlərimdə müşahidə olundu (`884bb48f`, `33c6ecb9`).
+- Uzlaşdırma süpürgəsi onları **`expired`**-ə keçirir: canlı bazada **19 `expired` sətir** var (ən köhnəsi 2026-10-15 tarixli, `failure_reason` boş) — yəni süpürgə işləyir və tərk edilmiş sifariş nə paket verir, nə balans yazır ✅
+- Status paylanması (super-admin): **paid 11 · pending 7 · expired 19**.
+
+## ═══ DÜRÜST YEKUN SAYIM (voice-dən sonra, mobil Əlavə 4-dən əvvəl — 132 test) ═══
+### A) TAM İCRA OLUNDU, SÜBUTLU — 101
+REG: 01 02 04 05 06 09 12 13 14 15 16 17 18 (13)
+APPR: 01 02 03 05 06 07 08 09 10 11 12 (11)
+SCHED: 01 02 03 04 05 06 07 08 09 10 (10)
+WORKER: 01 02 03 04 07 08 09 10 (8)
+PROF: 01 02 03 04 05 06 07 08 (8)
+PLAN: 01 02 03 04 05 06 07 08 09 (9)
+PAY: 01 02 03 04 05 09 10 11 13 (9)
+CARD: 01 (1)
+WALLET: 01 02 03 04 07 08 (6)
+WSHOP: 01 03 04 05 06 (5)
+OFFER: 02 03 04 05 06 (5)
+SPAY: 01 02 05 06 07 (5)
+LAND: 01 02 03 04 05 (5)
+I18N: 01 02 03 (3)
+RESP: 02 03 04 (3)
+
+### B) QİSMƏN İCRA — 12 (əsas/təhlükəli hissə yoxlanılıb, bir addım qalıb)
+| Test | Nə edildi | Nə qaldı |
+|---|---|---|
+| REG-03 | offline redaktə **boş forma açmır** (data itkisi riski yoxdur) | açıq xəbərdarlıq toast-ı tutulmadı |
+| REG-07 | tətbiq tərəfi düzgün («Sign in with Google», Privacy/Terms) | Google **CAPTCHA** avtomatlaşdırmanı bloklayır |
+| REG-08 | auth seçicisi (OAuth/Bearer/Yoxdur) təsdiqləndi; env-dəyişən adı düz mətndir (doğrudur) | token **dəyərinin** maskası — mağazada bearer bağlayıcı yoxdur |
+| REG-10 | — | 1C formu bu tenant mağazasında açılmır |
+| APPR-04 | inline təsdiq mexanizmi təsdiqləndi, delegat axını tam işləyir | «istifadəçi özü təsdiq edir» variantı per-tool öz-təsdiq konfiqı tələb edir |
+| WORKER-05/06 | mexanizm digər yerlərdə sübut olundu | Google OAuth CAPTCHA |
+| WSHOP-02 | yer sayına görə total düzgün (1/3/10/50 → 5/15/50/250 ₼) | **tier endirimi** — bu işçidə həcm zolağı qurulmayıb |
+| OFFER-01 | qırmızı qeyd, «Hamıya düşür» nişanı, təsdiq pəncərəsi, əhatə sayı 24/24 — hamısı ✅ | addım 7-8 (həqiqətən aktivləşdirmək) — **qəsdən edilmədi**, 24 təşkilata endirim düşərdi |
+| SUSP-02 | «manual» ssenarisi tam icra olundu (→ M-6) | «unpaid» ssenarisi `period_end` DB manipulyasiyası tələb edir |
+| PAY-08 | tərk edilmiş sifarişlər `pending` → süpürgə ilə `expired` (19 sətir sübut) | `order_ttl_minutes`-i 5-ə endirib dəqiq vaxtı ölçmək |
+| RESP-01 | 1905 / 1280 / 390 px yoxlanıldı — heç birində üfüqi sürüşmə yoxdur | 1440 və 1024 px ölçülmədi |
+
+### C) ÜMUMİYYƏTLƏ İCRA OLUNA BİLMƏDİ — 19
+| Səbəb | Testlər |
+|---|---|
+| **Funksiya söndürülüb** (`payriff.card_save=false` → kart saxlanmır) | CARD-02 CARD-03 CARD-04 CARD-05 CARD-06 · WALLET-05 WALLET-06 **(7)** |
+| **DB-yə yazmaq lazımdır** (`period_end` / `suspension_floor_date`, handoff §0.4) | SUSP-01 SUSP-03 SUSP-04 SUSP-05 · OFFER-07 **(5)** |
+| **Paylaşılan produksiya konfiqini dəyişmək lazımdır** (bütün müştərilərə təsir edərdi) | PAY-12 · WSHOP-07 (`payriff.enabled` söndürmək) · SPAY-03 (`payriff.mode=production` + test açarı) · SPAY-04 (canlı paket qiymətini dəyişmək — imkan təsdiqləndi) **(4)** |
+| **Backend sirri / infrastruktur girişi lazımdır** | PAY-06 (callback secret ilə təkrar bildiriş) · PAY-07 (bildiriş ünvanını əlçatmaz etmək) **(2)** |
+| **Xarici xidmət qoşulması lazımdır** | REG-11 (ayırmaq üçün sərbəst qoşula bilən mağaza xidməti; sahibin canlı Gmail-ini ayırmaq olmaz) **(1)** |
+
+**YEKUN: 101 tam (77 %) · 12 qismən (9 %) · 19 mümkün deyil (14 %).**
+Qismən + mümkün deyil = 31. Bunların **19-u məhsul qüsuru deyil** — söndürülmüş funksiya, DB girişi, paylaşılan konfiq və ya xarici xidmət tələbidir. **12 qismən** testin isə hamısında **təhlükəli/kritik hissə yoxlanılıb**; qalan addımlar ya avtomatlaşdırma məhdudiyyəti (4 ədəd, hərəsi ~2 dəq manual), ya CAPTCHA (3), ya mühit məhdudiyyətidir (5).

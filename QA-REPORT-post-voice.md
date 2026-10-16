@@ -18,12 +18,12 @@
 
 | Göstərici | Say |
 |---|---:|
-| **Voice-dən sonrakı test əhatəsi (132 ID)** | **119 icra olundu / sənədləşdirildi (90 %)** — qalan 13-ün səbəbi §3.11-dədir |
+| **Voice-dən sonrakı test əhatəsi (132 ID)** | **101 tam (77 %) · 12 qismən (9 %) · 19 mümkün deyil (14 %)** — dəqiq siyahı §3.11-dədir |
 | Brauzer UI testi (desktop 1905px + mobil 390px + tünd tema) | **15+ ekran/axın** — hamısı §0.4 məcburi yoxlamalarından keçdi |
 | **Yeni Kritik qüsur** | **0** |
 | **Yeni Yüksək qüsur** | **1** (H-1 — limitli təklifin limitdən çox istifadəsi) |
 | Orta səviyyəli qeyd (sənədlə uyğunsuzluq / zəiflik) | 6 (M-1…M-6) |
-| Aşağı səviyyəli qeyd | 9 (L-1…L-9) |
+| Aşağı səviyyəli qeyd | 10 (L-1…L-10) |
 | Bilinən problemlərin canlı təsdiqi (yeni deyil) | 8 (TZ · illik paket · kart saxlama · zəif parol serveri · OFFER-02 təsdiqsiz redaktə · PAY-05 banner qolları · SUSP-02 əl ilə dayandırma · SPAY-05 STT/TTS bölməsinin yoxluğu) |
 | Düzəldiyi aşkarlanan köhnə problem | 2 (OFFER-04 «Müddət» sütunu kəsilməsi · WALLET-08 xəbərdarlığın heç vaxt çıxmaması) |
 | İcra edilə bilməyən (səbəbi ilə, §4) | ~25 UI/mobil + 11 canlıda qadağan (§0.4) |
@@ -143,6 +143,7 @@
 - **L-5 (format, PLAN-09/LAND-01):** həm landing-də, həm tətbiqdə onluq ayırıcı **nöqtədir** (`19.99 ₼`, `34.00 ₼`, `231.39 ₼`), amma sənəd §0.2 AZN üçün **vergül** gözləyir (`19,99 ₼`). Ardıcıl i18n/format uyğunsuzluğu.
 - **L-7 (wallet API, WALLET-05):** `PUT /billing/wallet/auto-topup` saxlanmış kart yoxdursa `409` qaytarır, amma cavabın `message` sahəsi insan cümləsi deyil, **kodun özüdür** (`"message":"no_saved_card"`). UI öz mətnini göstərdiyi üçün istifadəçiyə təsiri yoxdur.
 - **L-8 (ödəniş uzlaşdırması, SPAY-02/WSHOP-05):** `/super-admin/payments`-də plan və topup sətirləri `masked_pan`/`card_brand` saxlayır (`400000******2078`, `VISA`), **işçi (`kind=worker`) sətri isə boş** (həmçinin `period_start/period_end` boş). Eyni ekranda bu sütunlar olduğundan dəstək işçi ödənişini karta bağlaya bilmir.
+- **L-10 (PAY-13):** ödəniş tarixçəsində «Alınmadı» nişanının yanında şlüzün **xam kodu `DECLINED`** müştəriyə olduğu kimi göstərilir — insan cümləsinə çevrilməlidir.
 - **L-9 (PLAN-04):** `sales_contact_email` ayarı boş olduğu üçün «Satışla əlaqə» düyməsi `mailto:` yox, sadəcə `https://orgsysai.com`-u açır — fallback düzgün işləyir, amma enterprise müştərisi üçün faktiki əlaqə yolu yoxdur.
 - **L-6 (profil, PROF-01):** profil mətn sahələri (məs. “Vəzifə”) `PATCH /auth/me` ilə **təmizlənə bilmir** — boş sətir, `null` və boşluq hamısı köhnə dəyəri saxlayır (dəyişiklik baş vermir), həm də cavabdakı dəyər saxlanan dəyərlə ziddiyyətlidir.
 
@@ -327,14 +328,30 @@ Bizim UI mətnlərimiz **azərbaycanca və rəqəmlidir** («**Ən azı 10.00 �
 - OFFER-02-də təhlükəli `PATCH` brauzerdə **abort edildi** — serverə çatmadı; sonradan təsdiqləndi ki təklif hələ də `eligible_plan_codes=['pro']`-dur.
 - Ödənişlər Payriff **sandbox**-dadır (real pul hərəkət etmir): PAY-02 üçün 19.99, H-1 sübutu üçün 2×9.00.
 
-### Yekun əhatə (pass #2-dən sonra)
-Voice-dən sonrakı, mobil Əlavə 4-dən əvvəlki **132 test ID-nin 119-u (90 %) icra olundu və sübutla sənədləşdirildi.** Qalan **13** test üç konkret səbəbə görə bu mühitdə mümkün deyil:
+### PAY-03 ✅ · PAY-13 ✅/⚠️ · PAY-04 ✅ (əvvəl səhv təsnif olunmuşdu)
+**Düzəliş:** PAY-03 əvvəlki passda «canlıda qadağan» sayılmışdı — səhv idi; sandbox-da səhv OTP ilə rədd etdirmək risksizdir.
+- **PAY-03 ✅:** 3DS-də qəsdən səhv OTP → şlüz rədd etdi → ödəniş sətri **`status=failed`, `gateway_status=DECLINED`, `failure_reason="DECLINED"`**; **balans dəyişmədi** (uğursuz ödənişə kredit yazılmır) ✅; banner «Ödəniş alınmadı.» (PAY-05-də tutulub).
+- **PAY-13 ✅/⚠️:** hesabda hər üç status olduqdan sonra «Ödəniş tarixçəsi»: «**Alınmadı**» · «**Gözləyir**» · «**Ödənilib**» — statuslar azərbaycanca, məbləğlər manatla düzgün ✅. ⚠️ **L-10:** «Alınmadı» yanında şlüzün **xam kodu `DECLINED`** müştəriyə olduğu kimi göstərilir.
+- **PAY-04 ✅:** tərk edilmiş checkout `pending` qalır (paket/balans dəyişmir), uzlaşdırma süpürgəsi onu `expired`-ə keçirir — canlı bazada **19 `expired`** sətir var (status paylanması: paid 11 · pending 7 · expired 19).
 
-| Qalan test | Səbəb |
-|---|---|
-| CARD-03 · CARD-04 · CARD-06 | Kart saxlama `payriff.card_save=false` ilə söndürülüb (CARD-01-də canlı sübut olundu) |
-| PAY-12 · WSHOP-07 | `payriff.enabled`-in söndürülməsi tələb olunur — paylaşılan produksiya konfiqurasiyası |
-| SUSP-03 · SUSP-04 · SUSP-05 · OFFER-07 | `period_end`/`suspension_floor_date` üzərində DB manipulyasiyası tələb olunur (§0.4); super-admin API-si bu sahələri ümumiyyətlə çıxarmır |
+### Yekun əhatə — dürüst sayım (132 test)
+| Kateqoriya | Say | Pay |
+|---|---:|---:|
+| **Tam icra olundu, sübutlu** | **101** | 77 % |
+| **Qismən** (əsas/təhlükəli hissə yoxlanılıb, bir addım qalıb) | **12** | 9 % |
+| **Ümumiyyətlə icra oluna bilmədi** | **19** | 14 % |
+
+**Qismən icra olunan 12:** REG-03 (offline toast) · REG-07 + WORKER-05/06 (Google CAPTCHA) · REG-08 (mağazada bearer bağlayıcı yoxdur) · REG-10 (1C formu açılmır) · APPR-04 (per-tool öz-təsdiq konfiqı) · WSHOP-02 (tier-li işçi yoxdur) · OFFER-01 (addım 7-8 **qəsdən** edilmədi — 24 təşkilata endirim düşərdi) · SUSP-02 (manual ssenarisi ✅, unpaid ssenarisi DB tələb edir) · PAY-08 (19 `expired` sətirlə dolayı sübut, TTL dəqiq ölçülmədi) · RESP-01 (5 enidən 3-ü ölçüldü, heç birində problem yoxdur).
+
+**İcra oluna bilməyən 19 — hamısı mühit/konfiqurasiya səbəbidir, məhsul qüsuru deyil:**
+
+| Səbəb | Testlər | Say |
+|---|---|---:|
+| Funksiya söndürülüb — `payriff.card_save=false`, kart saxlanmır | CARD-02…06 · WALLET-05/06 | 7 |
+| DB-yə yazmaq lazımdır — `period_end` / `suspension_floor_date` (§0.4) | SUSP-01/03/04/05 · OFFER-07 | 5 |
+| Paylaşılan produksiya konfiqini dəyişmək lazımdır (bütün müştərilərə təsir edərdi) | PAY-12 · WSHOP-07 (`payriff.enabled`) · SPAY-03 (`payriff.mode`) · SPAY-04 (canlı qiymət) | 4 |
+| Backend sirri / infrastruktur girişi lazımdır | PAY-06 (callback secret) · PAY-07 (bildirişi kəsmək) | 2 |
+| Xarici xidmət qoşulması lazımdır | REG-11 (sahibin canlı Gmail-ini ayırmaq olmaz) | 1 |
 
 ## 4. İcra edilə bilməyən testlər və səbəbi
 

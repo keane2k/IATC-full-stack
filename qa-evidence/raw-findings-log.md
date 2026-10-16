@@ -108,3 +108,9 @@
 - REG-07/11/12 ❌ require real external service: OAuth login (REG-07), a connected store service to disconnect (REG-11; owner's Gmail is connected but must not be disconnected), connected service with tools for approval levels (REG-12; won't modify owner's live Gmail config).
 ### REG final tally: 10 PASS (01,02,04,05,06,13,14,15,16,18) + 1 deviation (09) + 5 partial/needs-manual (03,08,10,12,17) + 2 external-blocked (07,11).
 ### SAFETY NOTE: during REG-16 cleanup, the owner's real platform skill "explain" (used by 9 orgs/14 people) was almost targeted by a demote; caught by verifying the dialog title before confirming — NOT touched. Only qa-* test skills were modified and all deleted.
+
+## REG — OAuth/approval-levels pass (real Google account provided by owner)
+- REG-12 ✅ UI: Google Təqvim detail "Agentiniz nə edə bilər" panel — each tool's approval dropdown shows ALL 3 levels: Avtomatik icazə / Təsdiq tələb edir / Bloklanıb. Also confirms REG-06 detail view: "← Bağlayıcılara qayıt" back, "Bağlantı məlumatı" (Vəziyyət=Qoşulmayıb, Nəqliyyat=mcp_http·OAuth 2.0).
+- REG-07 🟡 APP-SIDE VERIFIED, end-to-end blocked by Google anti-automation: clicking "Qoşul" opens a correct Google consent popup — "Sign in with Google — to continue to orgsysai.com" with Privacy Policy/Terms links (OrgSysAI OAuth app correctly configured). Automated login cannot complete: Google presents a CAPTCHA ("Type the text you hear or see") on the identifier page because it detects the automated browser. A human tester completes this; scripted automation cannot. NOT an OrgSysAI defect.
+- REG-11 ❌ still blocked: disconnect needs a freshly connectable store service; owner's Gmail is connected but must not be disconnected (reconnect would hit the same Google CAPTCHA). 
+### REG FINAL: 11 PASS (01,02,04,05,06,12,13,14,15,16,18) · 1 deviation (09) · 5 partial/needs-manual (03,07,08,10,17) · 1 external-blocked (11).

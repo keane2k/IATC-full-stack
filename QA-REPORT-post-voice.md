@@ -116,7 +116,7 @@ Parol qapısı (`bercberc`) və giriş işlədi. Bütün yoxlanılan ekranlarda 
 
 ## 3.6 REG bölməsinin tam icrası (full-access pass — admin + super admin)
 
-Sahibdən tam icazə alındıqdan sonra REG brauzerlə genişləndirildi. **Yekun: 10 PASS + 1 fərq + 5 qismən + 2 xarici-bloklu.**
+Sahibdən tam icazə (admin + super admin + real Google hesabı) alındıqdan sonra REG brauzerlə genişləndirildi. **Yekun: 11 PASS + 1 fərq + 5 qismən + 1 xarici-bloklu.**
 
 - **REG-04 ✅** fayl yükləmə: `test.pdf` qəbul · `qadagan.exe` rədd («Unsupported file type '.exe'») · 25 MB+ rədd («Maksimum ölçü: 25 MB»).
 - **REG-06 ✅** admin 3 sekme (Mağaza/Mənim əlavələrim/Qoşulanlar) + kateqoriya süzgəcləri + loqolu kartlar (Gmail qoşulu ✓) + boş axtarış mesajı.
@@ -125,7 +125,9 @@ Sahibdən tam icazə alındıqdan sonra REG brauzerlə genişləndirildi. **Yeku
 - **REG-16 ✅** super admin: **«Bütün təşkilatlara aç»** (tenant admindəki «Təşkilata yüksəlt» ilə qarışmır — rol etiketləri düzgün); platforma yüksəltmə/endirmə işləyir.
 - **REG-03/17 🟡** offline: təhlükəli boş-forma / səssiz-boş siyahı **müşahidə olunmadı** (yaxşı), amma açıq xəta/qoruma mesajı avtomatlaşdırma ilə təsdiqlənmədi — manual lazımdır.
 - **REG-08/10 🟡** token qoşma dialoqu / 1C formu skriptlə etibarlı açıla bilmədi → token maskalanması (🔴) manual yoxlanmalıdır.
-- **REG-07/11/12 ❌** real xarici xidmət tələb edir (OAuth girişi; qoşulu xidmətin ayrılması; alətli qoşulu xidmət). Sahibin canlı Gmail qoşulması pozulmasın deyə toxunulmadı.
+- **REG-12 ✅** alət təsdiq səviyyələri: Google Təqvim detalında hər alətin açılan menyusu **üç səviyyəni** göstərir (Avtomatik icazə / Təsdiq tələb edir / Bloklanıb). Həmçinin REG-06 detal görünüşü təsdiqləndi (geri düyməsi, «Bağlantı məlumatı» paneli, Nəqliyyat=mcp_http·OAuth 2.0).
+- **REG-07 🟡** (real Google hesabı ilə) **tətbiq tərəfi düzgün**: «Qoşul» düyməsi düzgün Google icazə pəncərəsini açır — «Sign in with Google — to continue to **orgsysai.com**» + Privacy/Terms linkləri (OAuth tətbiqi düzgün qurulub). Uçdan-uca giriş **avtomatlaşdırma ilə tamamlana bilmir**: Google avtomatlaşdırılmış brauzeri aşkar edib **CAPTCHA** («Type the text you hear or see») göstərir. İnsan tester bunu keçir; skript keçə bilmir — **bu OrgSysAI qüsuru deyil**.
+- **REG-11 ❌** qoşulu xidmətin ayrılması: yeni qoşula bilən xidmət lazımdır; sahibin canlı Gmail qoşulması pozulmasın deyə toxunulmadı (yenidən qoşma eyni CAPTCHA-ya düşür).
 
 > ⚠️ **Təhlükəsizlik qeydi:** REG-16 təmizləməsində sahibin real platforma bacarığı «explain» (9 təşkilat / 14 nəfər istifadə edir) səhvən hədəflənə bilərdi; təsdiqdən əvvəl dialoq başlığı yoxlanıb dayandırıldı — **toxunulmadı**. Yalnız `qa-*` test obyektləri dəyişdirildi və hamısı silindi.
 

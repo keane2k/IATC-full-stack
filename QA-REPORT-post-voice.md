@@ -131,6 +131,19 @@ Sahibdən tam icazə (admin + super admin + real Google hesabı) alındıqdan so
 
 > ⚠️ **Təhlükəsizlik qeydi:** REG-16 təmizləməsində sahibin real platforma bacarığı «explain» (9 təşkilat / 14 nəfər istifadə edir) səhvən hədəflənə bilərdi; təsdiqdən əvvəl dialoq başlığı yoxlanıb dayandırıldı — **toxunulmadı**. Yalnız `qa-*` test obyektləri dəyişdirildi və hamısı silindi.
 
+## 3.7 APPR bölməsinin tam icrası (full-access pass)
+
+**Yekun: 9 PASS + 1 qismən + 2 manual/bloklu.** Təsdiq MÜHƏRRİKİ tam yoxlanıldı.
+- **APPR-06 ✅** «Parametrlərə bax»: Giriş parametrləri (3) + Sistem məlumatı cədvəlləri, kopyala ikonları, xam obyekt yoxdur.
+- **APPR-07 ✅** «Həvalə parametrləri» delegasiya paneli + «Planlaşdırılmış alətlər» seçicisi.
+- **APPR-08 ✅** sayğaclar · axtarış · görünüşlər (Mənim / Mənə təyin edilib).
+- **APPR-11 ✅** ilk qərar qalib gəlir; həll olunmuş sorğuya ikinci müraciət → **409 «approval already resolved»** (təmiz, 500 deyil, ikiqat icra yoxdur).
+- **APPR-01 🟡** təsdiq yaranması cədvəl yolu ilə sübut olundu (/approvals-da tam kartla görünür); söhbətdəki alət-çağırışı kartı avtomatlaşdırma ilə yaradıla bilmədi (alət səviyyəsi dəyişikliyi skriptlə yapışmır) — manual lazımdır.
+- **APPR-04 ❌** söhbətdən «approve»/rədd — canlı alət-çağırışı təsdiqi lazımdır (manual).
+- **APPR-10 ❌** paket kilidi — üzv Plus paketindədir (təsdiqlər açıq); təsdiqsiz paketli hesab lazımdır.
+
+Əvvəl API ilə sübut olunmuşdu: APPR-02 (təsdiq), APPR-03 (rədd+səbəb), **APPR-05 (🔴 özünü-təsdiq qadağası)**, **APPR-09 (🔴 stuck RBAC)**, APPR-12 (mobil).
+
 ## 4. İcra edilə bilməyən testlər və səbəbi
 
 **A. Canlı sistemdə qadağan olanlar (§0.4):** SUSP-01…05 (hamısı `period_end`/`suspension_floor_date` baza yazması tələb edir) · OFFER-01/02 (boş filtrli təklif = bütün platformaya endirim) · PAY-03/07/08 · CARD-05 · OFFER-06 · SPAY-03. **Səbəb:** canlı bazaya yazma / real ödənişlərin sındırılması / 24 saat gözləmə.

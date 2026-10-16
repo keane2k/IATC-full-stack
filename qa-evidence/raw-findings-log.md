@@ -114,3 +114,13 @@
 - REG-07 🟡 APP-SIDE VERIFIED, end-to-end blocked by Google anti-automation: clicking "Qoşul" opens a correct Google consent popup — "Sign in with Google — to continue to orgsysai.com" with Privacy Policy/Terms links (OrgSysAI OAuth app correctly configured). Automated login cannot complete: Google presents a CAPTCHA ("Type the text you hear or see") on the identifier page because it detects the automated browser. A human tester completes this; scripted automation cannot. NOT an OrgSysAI defect.
 - REG-11 ❌ still blocked: disconnect needs a freshly connectable store service; owner's Gmail is connected but must not be disconnected (reconnect would hit the same Google CAPTCHA). 
 ### REG FINAL: 11 PASS (01,02,04,05,06,12,13,14,15,16,18) · 1 deviation (09) · 5 partial/needs-manual (03,07,08,10,17) · 1 external-blocked (11).
+
+## APPR — full-access completion pass
+- APPR-06 ✅ UI: "Parametrlərə bax" modal — "Giriş parametrləri (3)" table (prompt/cadence/cron) + "Sistem məlumatı" (Sorğu edən/Təsdiqçi/Sessiya/Yaradılıb), per-row copy icons, no [object Object], no overflow.
+- APPR-07 ✅ UI: "Həvalə parametrləri" delegation panel in "Mənə təyin edilib" view, with "Planlaşdırılmış alətlər: Həmişə təsdiqlə" selector + "əsas həvalə edən" listing.
+- APPR-08 ✅ UI: counts (Gözləyən/Təsdiqlənmiş/Rədd) accurate, search box present, views Mənim/Mənə təyin edilib with badges.
+- APPR-11 ✅ API: first decision wins (approve->approved); second resolve on resolved approval -> 409 "approval already resolved" (clean, no 500, no double-execution).
+- APPR-01 🟡: approval CREATION proven via schedule path (appears in /approvals assigned view with full card); the chat-tool-call card entry could not be forced via automation (per-tool approval-level dropdown change did not persist under scripted clicks). Needs interactive/manual.
+- APPR-04 ❌: chat-inline "approve"/reject — needs a live chat tool-call approval (same blocker as APPR-01 chat entry). Needs manual.
+- APPR-10 ❌: package lock — member is on Plus (approvals enabled); no plan-without-approvals account to test the lock panel. Needs a locked-plan account.
+### APPR FINAL: 9 PASS (02,03,05,06,07,08,09,11,12) · 1 partial (01) · 2 needs-manual/blocked (04 chat-inline, 10 package-lock). Approval ENGINE fully validated (create, approve/reject, self-approval block, delegate, already-resolved guard, views, params, delegation, stuck RBAC, mobile).

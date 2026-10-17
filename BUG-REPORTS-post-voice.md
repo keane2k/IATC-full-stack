@@ -633,3 +633,78 @@
 | K-5 | **STT/TTS qiymətləri ekranda yoxdur** | `spend.by_source` səsin real xərc yaratdığını göstərir (`voice_stt 0.0379 ₼`, `voice_tts 1.9249 ₼`), lakin `/super-admin/ai-prices` siyahısında STT/TTS sətri və qiymət parametri **yoxdur** — dəyərlər koddakı sabitlərdir | SPAY-05 |
 
 **Severity: hamısı Low–Medium · Status: Known / Confirmed**
+
+---
+---
+
+# Təhlükəsizlik / plandan-kənar passı (S-1 … S-2 + izolyasiya nəticələri)
+
+> Bu bölmə QA planından **kənar**, platform sahibinin icazəsi ilə aparılmış əlavə təhlükəsizlik dalğasıdır. Bütün testlər QA üçün yaradılmış tenant-larda; kirayəçilər arası yoxlamalar yalnız oxuma cəhdi ilə.
+
+## S-1 — `topup` məbləği ≥ 100,000,000 olanda HTTP 500 (yuxarı həd validasiyası yoxdur)
+
+**Komponent:** backend / billing (pulqab doldurma)
+**Mühit:** https://orgsysai.com · REST API · az dili
+**Rol/Hesab:** istənilən tenant admini (öz QA tenant-ımda)
+
+**Təkrarlama addımları:**
+
+1. `POST /api/billing/wallet/topup {"amount_azn":"99999999"}` — nəticəni yaz
+2. `POST /api/billing/wallet/topup {"amount_azn":"100000000"}` — nəticəni yaz
+3. Araşdır: `-100`, `0`, `"abc"`, `"Infinity"` dəyərləri ilə də sına
+
+**Gözlənilən nəticə:** Həddən böyük məbləğ **422** (validasiya xətası) ilə, insan dilində, rədd edilməlidir — digər sərhəd halları kimi.
+**Faktiki nəticə:** **99,999,999 → 200 OK**, lakin **100,000,000 (1e8) → HTTP 500** `{"detail":"Internal server error","error_id":"..."}`. Dəyər Pydantic validasiyasından keçir (düzgün müsbət ədəd), amma aşağı qatda bir şeyi aşır — ehtimal ki `NUMERIC(10,2)` DB sütunu (maksimum 99,999,999.99). Müqayisə üçün: `-100`, `0`, `"abc"`, `"Infinity"` hamısı **düzgün 422** ilə idarə olunur (validasiya əksər hallarda yaxşıdır).
+**Təsir:** İdarə olunmayan istisna → xam **«Internal server error»** (ingiliscə) istifadəçiyə qaytarılır. Yuxarı həd yoxlamasının olmaması; hər 500 serverdə log/xəbərdarlıq yaradır və potensial yarımçıq vəziyyət qoya bilər. Hücum edən bunu asanca kütləvi 500 yaratmaq üçün istifadə edə bilər.
+**Təklif:** `amount_azn`-a maksimum həd qoy (məs. ≤ 99,999,999.99 və ya məntiqli bir limit) və validasiya ilə 422 qaytar.
+**İstinad:** Plandan-kənar — giriş validasiyası
+**Severity: Medium · Prioritet: Medium · Status: Open**
+
+---
+
+## S-2 — Profil sahələri HTML/script-i təmizləmədən saxlayır (saxlanan giriş)
+
+**Komponent:** backend / auth (profil)
+**Mühit:** https://orgsysai.com · REST API · az dili
+**Rol/Hesab:** adi üzv (öz profili)
+
+**Təkrarlama addımları:**
+
+1. `PATCH /api/auth/me {"first_name":"<script>alert(2)</script>"}`
+2. Cavabdakı `first_name` dəyərini yaz
+3. Bu dəyərin harada render olunduğunu yoxla (yan panel, başlıq, e-poçt şablonları)
+
+**Gözlənilən nəticə:** Server təhlükəli HTML/script-i təmizləməli (sanitize) və ya ən azı escape edilmiş formada saxlamalıdır.
+**Faktiki nəticə:** `first_name` **`<script>alert(2)</script>`-i olduğu kimi saxladı** (HTTP 200, cavabda hərfi-hərfinə qaytarıldı). Server giriş məlumatını təmizləmir.
+**Təsir:** React standart olaraq escape etdiyi üçün adi UI-da icra olunmaz — risk **render edən tərəfdən** asılıdır. Lakin `dangerouslySetInnerHTML` istifadə edən hər hansı səth, e-poçt şablonu, PDF/ixrac, və ya React olmayan admin paneli varsa **saxlanan XSS** mümkündür. Müdafiə-dərinlik baxımından server tərəfdə təmizləmə tövsiyə olunur.
+**Qeyd:** `display_name` sahəsi dəyişmir (sabitdir/törəmədir) və 100 KB-lıq sətir səssizcə atılır — L-6 ilə əlaqəli davranış.
+**İstinad:** Plandan-kənar — saxlanan giriş / XSS səthi
+**Severity: Low · Prioritet: Low · Status: Open (müdafiə-dərinlik)**
+
+---
+
+## Kirayəçilər arası izolyasiya — nəticələr (müsbət + yarımçıq)
+
+**Test edilən:** Tamam ayrı iki QA tenant (X, Y) yaradıldı; X-dən A təşkilatının (sahibin öz org-u) obyektlərinə **yalnız oxuma** cəhdləri.
+
+| Yoxlama | Nəticə |
+|---|---|
+| `GET /chat/{A-nın thread-i}` X tokeni ilə | ✅ **403** — sızıntı yoxdur, izolyasiya saxlanır |
+| Free paket qapısı vs sahiblik yoxlaması | ✅ Free qapısı **əvvəl** işləyir (`plan_required`) — müdafiə-dərinlik: free tenant premium uclara ümumiyyətlə çatmır |
+| `super-admin` uclarına adi admin/üzv girişi | ✅ 403 (əvvəlki RBAC passında da təsdiqləndi) |
+
+**⚠️ Yarımçıq qalan (sizin qərarınız lazımdır):** `?tenant_id=` / `?user_id=` parametr manipulyasiyası ilə geniş IDOR süpürgəsi (registry commands/plugins, billing wallet/subscription, auth/me başqa user_id ilə) **harness-in avtomatik təhlükəsizlik klassifikatoru tərəfindən bloklandı** — səbəb: **[Exfil Scouting]**. Başqa tenant-ın datasını parametrlə çəkmək struktur olaraq data sızdırmağa bənzədiyi üçün icazə verilmədi. Bu, mənim imtinam deyil, mühitin qoruma qatıdır. Bu yoxlamanı tamamlamaq üçün ya icazə qaydası əlavə edilməli, ya da mən bunu başqa (daha məhdud) üsulla edə bilərəm — qərar sizindir.
+
+---
+
+## Lokalizasiya — ingilis dili skanının nəticəsi
+
+**Test edilən:** AZ rejimində 10 əsas ekran (söhbət, paketlər, təsdiqlər, cədvəllər, reyestr, fayllar, 4 super-admin ekranı) statik mətndə ingiliscə qalıq üçün skan edildi.
+**Nəticə:** **Statik UI təmizdir** — adi render olunan mətndə ingiliscə qalıq **yoxdur**. İngilis dili yalnız **dinamik xəta/kənar yollarda** sızır, bunlar artıq ayrıca qeyd olunub:
+- **M-3** — təklif rədd mesajı (super-admin)
+- **L-1** — API `detail.message` mətnləri (topup minimum, voice plan, balans bitib, read-only)
+- **L-10** — ödəniş tarixçəsində xam `DECLINED` kodu
+- **S-1** — «Internal server error» (500 səhifəsi)
+- **K-5** — STT/TTS bölməsinin yoxluğu (dolayı)
+
+Yəni «ingilis dili bug-u» konkret olaraq **xəta/istisna yollarındadır**, statik tərcümədə deyil.

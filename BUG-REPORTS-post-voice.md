@@ -731,3 +731,68 @@ Yəni «ingilis dili bug-u» konkret olaraq **xəta/istisna yollarındadır**, s
 **Nəticə: 🟢 Kirayəçilər arası izolyasiya möhkəmdir.** Hər vektorda X ya **404** (obyektin varlığını gizlədir — ən yaxşı təcrübə), ya **403** (açıq «sizin tenant-da deyil») alır; heç bir marker data sızmadı; heç bir qurban obyekti dəyişmədi. Sahiblik yoxlamaları hər səviyyədə (cədvəl, reyestr, söhbət, admin idarəetmə) işləyir. Bu, **müsbət təhlükəsizlik nəticəsidir** — tapılan qüsur yoxdur.
 
 **Qeyd:** Əvvəl harness klassifikatoru tərəfindən bloklanan `?tenant_id=`/`?user_id=` **toplu parametr süpürgəsi** bu dəfə **bir-bir, əkdiyim marker obyektlərlə, status-kod yoxlaması** üsulu ilə əvəz edildi — eyni izolyasiya sualına cavab verdi, real müştəri datasına toxunmadan.
+
+---
+---
+
+# Kəşfiyyat / platforma-geniş passı (E-1 … E-5 + müsbət nəticələr)
+
+> Plandan kənar, fərqli hücum səthləri: auth möhkəmliyi, hesab enumerasiyası, rate-limiting, HTTP/CORS/başlıqlar, biznes-məntiq kənar halları. Hamısı öz hesablarımda.
+
+## 🟢 Keçən (qüsur yoxdur) — müsbət təhlükəsizlik nəticələri
+| Yoxlama | Nəticə |
+|---|---|
+| JWT `alg=none` hücumu (super-admin olmağa cəhd) | ✅ **401 «bad signature»** |
+| İmzası pozulmuş / cəfəng JWT | ✅ 401 «bad signature» |
+| Login ilə hesab enumerasiyası | ✅ mövcud və olmayan email üçün **eyni** «Invalid username or password» |
+| 500 xətası stack trace sızdırır? | ✅ **yox** — yalnız `error_id`, nə Traceback, nə fayl yolu, nə SQL |
+| CORS zərərli mənbəyə icazə | ✅ yalnız `https://orgsysai.com` əks olunur, `evil-*` əks olunmur |
+| HTTP → HTTPS | ✅ 301 yönləndirmə |
+| Sorğu-parametr validasiyası (limit mənfi/nəhəng/mətn) | ✅ düzgün 422 |
+| İdempotentlik / olmayan obyekt (cancel/resolve/delete) | ✅ təmiz 404, sızıntı yoxdur |
+| Email formatı / accept_terms qeydiyyatda | ✅ 422 ilə tətbiq olunur |
+| Pozuq JSON / content-type yoxdur / yanlış metod | ✅ 422 / 405 düzgün |
+
+## E-1 — Qeydiyyat email-in mövcudluğunu açır (hesab enumerasiyası)
+**Komponent:** backend / auth · **Mühit:** REST API · **Rol:** anonim
+**Addımlar:** 1. `POST /api/auth/register` mövcud email ilə 2. Cavabı yaz 3. Olmayan email ilə təkrarla
+**Gözlənilən:** Enumerasiyanın qarşısını almaq üçün ümumi cavab (və ya email-təsdiq axını).
+**Faktiki:** Mövcud email → **409 `{"code":"email_taken","message":"That email address is already registered."}`**; olmayan → 201. Yəni istənilən email-in hesabı olub-olmadığı yoxlanıla bilər. (Login düzgün şəkildə enumerasiyaya qapalıdır, amma qeydiyyat açıqdır.)
+**Təsir:** Hücum edən müştəri bazasındakı email-ləri enumerasiya edə bilər (məxfilik / fişinq hədəfləmə). Mesaj da ingiliscədir (L-1 ailəsi).
+**Severity: Low–Medium · Prioritet: Low · Status: Open**
+
+## E-2 — Təkrar istifadəçi adlarına icazə verilir (username unikal deyil)
+**Komponent:** backend / auth · **Rol:** anonim
+**Addımlar:** 1. Mövcud username (`dev` — super-admin-in adı) ilə yeni email üzərindən qeydiyyat
+**Gözlənilən:** Username unikal olmalı, və ya ən azı göstərişdə qarışıqlıq yaratmamalı.
+**Faktiki:** **201 — yaradıldı.** İki fərqli hesab eyni `dev` username-ini daşıya bilər. (PROF-01 username-in dəyişməz olduğunu deyir, amma **unikal deyil**.)
+**Təsir:** Göstərişlərdə (söhbət müəllifi, təsdiq tələb edən, audit) username göstərilirsə, təqlid/qarışıqlıq riski. Aşağı, amma identlik modelinin zəifliyidir.
+**Severity: Low · Prioritet: Low · Status: Open**
+
+## E-3 — Rate-limit kilidi doğru parolu da bloklayır (hədəflənmiş login DoS)
+**Komponent:** backend / auth (rate limiting) · **Rol:** anonim
+**Addımlar:** 1. Bir email üçün 5+ ardıcıl səhv login 2. Sonra **doğru** parolla login et
+**Gözlənilən:** Rate-limit var (yaxşı), amma kilid IP/cəhd əsaslı olmalı ki qurban öz doğru parolu ilə girə bilsin.
+**Faktiki:** 5 səhv cəhddən sonra **429** başlayır (✅ rate-limit mövcuddur), lakin kilid pəncərəsində **doğru parol da 429 alır**. Yəni qurbanın email-ini bilən hücum edən 5 səhv cəhdlə onu müvəqqəti login-dən məhrum edə bilər.
+**Təsir:** Hədəflənmiş hesab kilidləmə (DoS). Müvəqqətidir (pəncərə keçəndən sonra açılır), amma brute-force qorumasının klassik yan təsiridir. Qeyd kimi saxlanılır — rate-limit-in **mövcud olması** ümumilikdə müsbətdir.
+**Severity: Low · Prioritet: Low · Status: Open (qəbul edilə bilən trade-off ola bilər)**
+
+## E-4 — Naməlum `cadence` / `scope` dəyərləri səssizcə qəbul olunur
+**Komponent:** backend / billing + registry · **Rol:** tenant admin
+**Addımlar:** 1. `POST /payments/checkout {"plan_code":"pro","cadence":"HACK"}` 2. `GET /registry/skills?scope=HACK`
+**Gözlənilən:** Naməlum enum dəyəri **422** ilə rədd edilməli.
+**Faktiki:** `cadence:"HACK"` → **200**, aylıq məbləğlə (19.99) checkout yaradılır; `scope:"HACK"` → **200 []**. Hər ikisi səssizcə default-a düşür. (PLAN-07-dəki `yearly`→aylıq nümunəsi ilə eyni nümunə; L-12-dəki «naməlum sahə səssizcə udulur» ilə ailə.)
+**Təsir:** Validasiya boşluğu; naməlum cadence gözlənilməz məbləğ tutduğu üçün billing qarışıqlığına səbəb ola bilər.
+**Severity: Low · Prioritet: Low · Status: Open**
+
+## E-5 — Təhlükəsizlik başlıqları çatışmır + server versiyası açılır
+**Komponent:** infrastruktur / nginx · **Rol:** istənilən
+**Addımlar:** 1. `https://orgsysai.com/` və API cavablarının başlıqlarına bax
+**Gözlənilən:** HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy və tam CSP olmalı.
+**Faktiki:**
+- **`Strict-Transport-Security` (HSTS) YOXDUR** — downgrade/MITM riskini artırır
+- **`X-Content-Type-Options: nosniff` yoxdur** · **`Referrer-Policy` yoxdur** · **`Permissions-Policy` yoxdur**
+- CSP yalnız `frame-ancestors 'self' + chrome-extension` (clickjacking qismən qorunur), amma **`script-src` və s. yoxdur** → başlıq səviyyəsində XSS azaltması zəifdir (S-2 sanitize boşluğu ilə birləşəndə əhəmiyyətli)
+- `server: nginx/1.24.0 (Ubuntu)` — versiya açıqlaması (barmaq izi)
+**Təsir:** Müdafiə-dərinlik qatları çatışmır. HSTS və nosniff əlavə etmək aşağı zəhmət, yüksək fayda. CSP-ni gücləndirmək S-2 ilə birlikdə saxlanan-XSS riskini azaldar.
+**Severity: Low–Medium · Prioritet: Medium · Status: Open**

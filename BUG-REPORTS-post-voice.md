@@ -823,3 +823,22 @@ Yəni «ingilis dili bug-u» konkret olaraq **xəta/istisna yollarındadır**, s
 **Qeyd (tam təsdiqlənməyən hissə):** `/files/attach` **staging** ucudur — yüklənən fayl yalnız göndərilmiş söhbət mesajına bağlananda materiallaşır, ona görə servis-zamanı `Content-Type`-ı (SVG/HTML təhlükəli tiplə verilib-verilmədiyini) birbaşa təsdiqləyə bilmədim. **Əsas risk (saxlanan XSS) açıq qalır:** əgər bu fayllar sonradan orijinal `image/svg+xml` və ya `text/html` ilə servis olunursa, saxlanan XSS mümkündür. Serve-zamanı `Content-Type: text/plain` + `Content-Disposition: attachment` + `X-Content-Type-Options: nosniff` ilə verilməsi yoxlanmalıdır (E-5 başlıq boşluğu ilə birləşir).
 **Təklif:** Yüklənən faylları heç vaxt orijinal aktiv MIME ilə servis etmə (həmişə `attachment` + `nosniff`); fayl adını path komponentlərindən təmizlə; icra-oluna-bilən tipləri açıqca rədd et və ya karantin et.
 **Severity: Low–Medium (serve davranışından asılı) · Prioritet: Medium · Status: Open (serve-zamanı Content-Type təsdiqi lazımdır)**
+
+---
+---
+
+# Əlavə QA passı (brauzer, adi istifadəçi gözü ilə bug axtarışı)
+
+> Fərqli səthlər və qarşılıqlı əməliyyatlar — yeni bug axtarışı. Nəticə: bu passda **yeni funksional bug tapılmadı**; yoxlananların hamısı keçdi (aşağıda nə sınandığı dürüstlük üçün sənədləşdirilib).
+
+| Yoxlanan | Nəticə |
+|---|---|
+| **Layihələr** (yeni səth) — yaratma axını | ✅ modal → doldur → «Layihə yarat» → siyahıda göründü, **0 konsol xətası** |
+| **Boş mesaj** göndərmə (API) | ✅ **400 «message cannot be empty»**; yalnız boşluq da rədd edilir (brauzerdəki 200 yanlış siqnal idi) |
+| **Slash əmr menyusu** (`/` yazanda) | ✅ menyu açılır |
+| **Adi üzv RBAC (UI)** — admin yox | ✅ «Təşkilat» menyusu üzvə **görünmür**; `/super-admin/tenants` birbaşa açılanda `/chat`-ə yönləndirilir, **data sızmır** |
+| **Adi sessiya silmə** | ✅ təsdiq pəncərəsi çıxır («Bütün yazışma silinəcək — fayllarla birlikdə»); təsdiqdən **əvvəl DELETE getmir** |
+
+**Qeyd (CHAT-16 ilə əlaqəli):** Adi söhbət silinməsi düzgün şəkildə təsdiq soruşur. İstifadəçinin əvvəl işarələdiyi CHAT-16 bug-u konkret olaraq **AI işçi (mütəxəssis) sessiyalarının** təsdiqsiz silinməsinə aiddir — bu, voice-dən əvvəlki §CHAT bölməsindədir (bu dalğanın əsas əhatəsindən kənar); təkrar yoxlanması üçün aktiv işçi sessiyası lazımdır.
+
+**Təmizlik:** yaradılan test obyektləri (cədvəl «Səhər xülasəsi», layihə «QA Test Layihə») silindi; sessiya silmə dialoqunda son təsdiq **basılmadı** (heç nə silinmədi).

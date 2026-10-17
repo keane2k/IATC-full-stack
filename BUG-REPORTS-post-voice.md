@@ -796,3 +796,30 @@ Yəni «ingilis dili bug-u» konkret olaraq **xəta/istisna yollarındadır**, s
 - `server: nginx/1.24.0 (Ubuntu)` — versiya açıqlaması (barmaq izi)
 **Təsir:** Müdafiə-dərinlik qatları çatışmır. HSTS və nosniff əlavə etmək aşağı zəhmət, yüksək fayda. CSP-ni gücləndirmək S-2 ilə birlikdə saxlanan-XSS riskini azaldar.
 **Severity: Low–Medium · Prioritet: Medium · Status: Open**
+
+---
+---
+
+# Qalan səthlər: fayl yükləmə, webhook, privilege escalation, sirlər (E-6 + müsbətlər)
+
+## 🟢 Keçən (qüsur yoxdur) — müsbət nəticələr
+| Yoxlama | Nəticə |
+|---|---|
+| **Privilege escalation (mass assignment)** — `PATCH /auth/me {role:"super_admin",is_super_admin:true,email_verified:true}` | ✅ **Hamısı iqnor edilir** — rol `user` qalır, `is_super_admin` False, `email_verified` False; `/super-admin/*` yenə 403 |
+| **Webhook / callback forging** — saxta secret + `{status:"APPROVED"}`, path traversal, alt yollar (`/webhooks/payriff`, `/payments/callback`) | ✅ **Hamısı 404** — auth-sız ödəniş təsdiqi mümkün deyil (secret-in-URL) |
+| **Sirlərin maskalanması** — `GET /super-admin/platform-settings` | ✅ Əsl sirlər **maskalanıb**: `payriff.secret_key`, `payriff.callback_secret`, `smtp.password`, `resend.api_key` — hamısı boş/gizli (yalnız yazıla bilir). Yalnız qeyri-sirr konfiq (host, merchant_id, SMTP username) görünür və yalnız super-admin üçün |
+
+## E-6 — Fayl yükləmə təhlükəli tipləri və path-traversal adlarını qəbul edir
+**Komponent:** backend / files (`POST /api/files/attach`) · **Rol:** tenant admin (öz tenant-ımda)
+**Addımlar:**
+1. `POST /api/files/attach` multipart `files=` sahəsi ilə `.svg` (script-li), `.html` (script-li), `.exe`, `.sh` yüklə
+2. `filename=../../../etc/passwd` ilə yüklə
+3. Cavabı yaz
+
+**Gözlənilən:** Təhlükəli icra-oluna-bilən/aktiv tiplər rədd edilməli və ya təhlükəsizləşdirilməli; fayl adı path komponentlərindən təmizlənməli.
+**Faktiki:**
+- Bütün tiplər **200 ilə qəbul olunur** (`.svg`/`.html`/`.exe`/`.sh`) — `kind:"unsupported"` kimi işarələnir (adi .txt isə `kind:"document"`), amma **rədd edilmir**
+- `filename:"../../../etc/passwd"` **olduğu kimi saxlanır** (cavabda hərfi-hərfinə qayıdır). Saxlama UUID (`attachment_id`) ilə olduğu üçün birbaşa disk-traversal yazması ehtimal olunmur, lakin fayl adı metadata kimi təmizlənmir
+**Qeyd (tam təsdiqlənməyən hissə):** `/files/attach` **staging** ucudur — yüklənən fayl yalnız göndərilmiş söhbət mesajına bağlananda materiallaşır, ona görə servis-zamanı `Content-Type`-ı (SVG/HTML təhlükəli tiplə verilib-verilmədiyini) birbaşa təsdiqləyə bilmədim. **Əsas risk (saxlanan XSS) açıq qalır:** əgər bu fayllar sonradan orijinal `image/svg+xml` və ya `text/html` ilə servis olunursa, saxlanan XSS mümkündür. Serve-zamanı `Content-Type: text/plain` + `Content-Disposition: attachment` + `X-Content-Type-Options: nosniff` ilə verilməsi yoxlanmalıdır (E-5 başlıq boşluğu ilə birləşir).
+**Təklif:** Yüklənən faylları heç vaxt orijinal aktiv MIME ilə servis etmə (həmişə `attachment` + `nosniff`); fayl adını path komponentlərindən təmizlə; icra-oluna-bilən tipləri açıqca rədd et və ya karantin et.
+**Severity: Low–Medium (serve davranışından asılı) · Prioritet: Medium · Status: Open (serve-zamanı Content-Type təsdiqi lazımdır)**

@@ -708,3 +708,26 @@
 - **K-5** — STT/TTS bölməsinin yoxluğu (dolayı)
 
 Yəni «ingilis dili bug-u» konkret olaraq **xəta/istisna yollarındadır**, statik tərcümədə deyil.
+
+---
+
+## Kirayəçilər arası izolyasiya — TAM test (iki nəzarətimdə olan tenant ilə)
+
+**Quruluş:** İki müstəqil QA tenant yaradıldı (X = hücum edən, Y = qurban), hər ikisi sandbox ödənişi ilə **pro** pakete qaldırıldı (funksiya qapısının sahiblik yoxlamasını maskalamaması üçün). Y-də marker obyektlər əkildi (cədvəl «Y-VICTIM-SCHED», bacarıq «y-victim-skill», söhbət «Y GIZLI MESAJ: parol 12345»). X həmin obyektlərə ID ilə girməyə çalışdı. Marker mətnin X-in cavabında görünüb-görünmədiyi yoxlanıldı.
+
+| Vektor | X-in cəhdi | Nəticə |
+|---|---|---|
+| Cədvəl oxu | `GET /schedules/{Y_id}/runs` | ✅ **404** — obyektin varlığını belə təsdiqləmir |
+| Cədvəl dəyiş | `PATCH /schedules/{Y_id}` | ✅ **404**, Y-nin cədvəli dəyişmədi |
+| Cədvəl işə sal | `POST /schedules/{Y_id}/run` | ✅ **404** |
+| Cədvəl sil | `DELETE /schedules/{Y_id}` | ✅ **404**, Y-nin cədvəli qaldı |
+| Bacarıq siyahısı | `GET /registry/skills?scope=all` | ✅ X yalnız öz (boş) siyahısını görür; Y-nin bacarığı/marker yoxdur |
+| Söhbət oxu | `GET /chat/{Y_thread}` | ✅ **403**, marker mətn sızmadı |
+| İstifadəçi bağlayıcısı | `PATCH /admin/users/{Y_uid}/connectors/gmail` | ✅ **403 «Target user is not in your tenant»** |
+| İstifadəçiyə işçi təyini | `PUT /admin/users/{Y_uid}/ai-workers/{id}` | ✅ **403 «Target user is not in your tenant»** |
+| İstifadəçi üçün access-rule | `PUT /admin/access-rules {user_id: Y}` | ✅ **403 «Target user is not in your tenant»** |
+| İstifadəçi siyahısı | `GET /admin/users` | ✅ X yalnız 1 (öz) istifadəçisini görür |
+
+**Nəticə: 🟢 Kirayəçilər arası izolyasiya möhkəmdir.** Hər vektorda X ya **404** (obyektin varlığını gizlədir — ən yaxşı təcrübə), ya **403** (açıq «sizin tenant-da deyil») alır; heç bir marker data sızmadı; heç bir qurban obyekti dəyişmədi. Sahiblik yoxlamaları hər səviyyədə (cədvəl, reyestr, söhbət, admin idarəetmə) işləyir. Bu, **müsbət təhlükəsizlik nəticəsidir** — tapılan qüsur yoxdur.
+
+**Qeyd:** Əvvəl harness klassifikatoru tərəfindən bloklanan `?tenant_id=`/`?user_id=` **toplu parametr süpürgəsi** bu dəfə **bir-bir, əkdiyim marker obyektlərlə, status-kod yoxlaması** üsulu ilə əvəz edildi — eyni izolyasiya sualına cavab verdi, real müştəri datasına toxunmadan.

@@ -864,3 +864,17 @@ Yəni «ingilis dili bug-u» konkret olaraq **xəta/istisna yollarındadır**, s
 **Qeyd:** İşçi (worker) `system_prompt`-u da eyni platforma-səviyyəli qapıdan keçdiyi üçün onu da keçə bilməz; həmçinin işçilər yalnız **super-admin** (platforma sahibi) tərəfindən yaradıldığından zərərli `system_prompt` təhdid modeli aşağıdır. UI-nın «sistem promptu təsdiq və təhlükəsizlik qaydalarını heç vaxt əvəz etmir» iddiası canlı davranışla təsdiqləndi.
 
 **Təhlükəsizlik qeydi:** Yaradılan `create_draft` interrupt-u **təsdiqlənmədi** (qaralama heç vaxt yaradılmadı); test faylı yalnız öz QA tenant-ımda.
+
+---
+---
+
+# Əlavə edge-case passı (E-7 … E-10)
+
+| # | Ad | Test | Nəticə |
+|---|---|---|---|
+| **E-7** | Yanlış/boş cron ifadəsi qəbul olunur | `POST /schedules` | «invalid cron», 7-sahəli cron, **boş cron**, «* * * * *» hamısı **201** — cron validasiyası yoxdur. Boş cron-lu cədvəl heç vaxt düzgün işləməyəcək, amma yaradılır |
+| **E-8** | Bacarıq adında xüsusi simvollar qəbul olunur | `POST /registry/skills` | `a/b c!@#` **201** yaradılır; **addakı `/` sonradan silməni pozur** (`DELETE /registry/skills/a/b...` → 404 marşrut pozulur) → **silinə bilməyən obyekt** |
+| **E-9** | Bacarıq adında uzunluq limiti yoxdur | `POST /registry/skills` | 300-simvollu ad **201** qəbul olunur |
+| **E-10** | Offer tərs tarix pəncərəsi qəbul olunur | `POST /billing/offers/admin` | `starts_at`(2027) > `ends_at`(2026) **201** — məntiqsiz pəncərə, validasiya yoxdur (müqayisə üçün: percent>100/mənfi/fixed-mənfi düzgün 400 ilə rədd olunur) |
+
+**Qeyd:** bu passda yaradılan test cədvəlləri (4) və 300-simvollu bacarıq silindi; `a/b c!@#` adlı bacarıq E-8 səbəbindən API ilə silinə bilmədi (atılabilən QA tenant-ında qalır); tərs-pəncərə offer deaktiv edildi.
